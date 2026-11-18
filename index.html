@@ -133,7 +133,7 @@ select option{background:var(--surface);color:var(--ink)}
 .lines{border:1px solid var(--line);border-top:0;overflow-x:auto}
 .lines td{padding:4px 8px;vertical-align:middle}
 .lines .cell{min-width:60px}
-.lines .cell.w{min-width:340px;resize:vertical;font:inherit;line-height:1.35}
+.lines .cell.w{min-width:340px;resize:none;overflow:hidden;font:inherit;line-height:1.35}
 .lines td{vertical-align:top}
 .pre{white-space:pre-line}
 .noteline td{font-style:italic;color:var(--muted);background:var(--sunk)}
@@ -254,6 +254,7 @@ const exTag=d=>d&&d.example?`<span class="ex">contoh</span>`:"";
 function toast(msg){const t=document.createElement("div");t.className="toast";t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2600)}
 function nextNo(prefix,list,date){const y=(date||todayISO()).slice(0,4);const re=new RegExp("^"+prefix+"/"+y+"/(\\d+)$");let mx=0;list.forEach(x=>{const m=re.exec(x.no||"");if(m)mx=Math.max(mx,+m[1])});return prefix+"/"+y+"/"+String(mx+1).padStart(4,"0")}
 function nextInvNo(date){const yy=(date||todayISO()).slice(2,4);let mx=Math.max(0,n(S.company.invNext)-1);S.invoices.forEach(i=>{const m=/^INV-\d{2}(\d{5})$/.exec(i.no||"");if(m)mx=Math.max(mx,+m[1])});return "INV-"+yy+String(mx+1).padStart(5,"0")}
+function jobItems(j){const ls=(j.lines||[]).filter(l=>l.type!=="note");if(!ls.length)return"—";const t=ls.map(l=>(n(l.qty)!==1?n(l.qty)+" × ":"")+String(l.desc||(byId("assets",l.assetId)||{}).name||"").split("\n")[0]).join(", ");return t.length>48?t.slice(0,46)+"…":t}
 const lineTotal=l=>l.type==="note"?0:n(l.qty)*n(l.dur)*n(l.rate);
 const linesSum=ls=>(ls||[]).reduce((a,l)=>a+lineTotal(l),0);
 function invCalc(v){const sub=linesSum(v.lines);const tax=sub*n(v.taxRate)/100;const total=sub+tax;const paid=(v.payments||[]).reduce((a,p)=>a+n(p.amount),0);const due=Math.max(0,total-paid);
@@ -295,7 +296,9 @@ function render(){
   const V=VIEWS[route.view]||VIEWS.utama;const out=V();
   $("#cp").innerHTML=out.cp;$("#main").innerHTML=(S.offline?`<div class="banner">Data belum dapat dicapai. Paparan mungkin tidak terkini.</div>`:"")+(!S.canWrite?`<div class="banner">Akaun anda belum didaftarkan sebagai staf, jadi rekod tidak boleh dilihat atau diubah. Minta pentadbir tambah e-mel anda dalam jadual staf.</div>`:"")+out.main;
   if(out.after)out.after();
+  document.querySelectorAll(".lines textarea").forEach(growTA);
 }
+function growTA(t){t.style.height="auto";t.style.height=(t.scrollHeight+2)+"px"}
 function crumb(parts){return `<div class="crumb">${parts.map((p,i)=>i<parts.length-1?`<a data-act="crumb" data-v="${p[1]}">${esc(p[0])}</a><span class="sep">/</span>`:`<span>${p[0]}</span>`).join("")}</div>`}
 function steps(list,map,cur){return `<div class="steps">${list.map(k=>`<span class="${k===cur?"on":""}">${esc(map[k][0])}</span>`).join("")}</div>`}
 function searchBox(view,ph){return `<input class="search" id="q-${view}" placeholder="${esc(ph)}" value="${esc(S.q[view]||"")}" data-q="${view}">`}
@@ -331,7 +334,7 @@ VIEWS.utama=()=>{
   const overRows=open.sort((a,b)=>(a.i.dueDate||"").localeCompare(b.i.dueDate||"")).slice(0,8);
   main+=`<div class="grid2"><section><h2 class="sec">Invois perlu dikutip</h2>${overRows.length?`<div class="tbl-wrap"><table><thead><tr><th>No.</th><th>Pelanggan</th><th>Tarikh Akhir</th><th class="r">Baki</th><th>Status</th></tr></thead><tbody>${overRows.map(({i,c})=>`<tr class="click" data-act="open" data-v="invois" data-id="${i.id}"><td class="mono">${esc(i.no)}</td><td>${esc(custName(i.customerId))}</td><td class="num">${dmy(i.dueDate)}</td><td class="r num">${RM(c.due)}</td><td>${invPill(i)}</td></tr>`).join("")}</tbody></table></div>`:emptyBox("Tiada baki tertunggak","Semua invois yang disahkan sudah dibayar penuh.")}</section>
   <section><h2 class="sec">Kerja di tapak sekarang</h2>${active.length?`<div class="tbl-wrap"><table><thead><tr><th>No. Kerja</th><th>Pelanggan</th><th>Tapak</th><th>Mula</th></tr></thead><tbody>${active.map(j=>`<tr class="click" data-act="open" data-v="kerja" data-id="${j.id}"><td class="mono">${esc(j.no)}</td><td>${esc(custName(j.customerId))}</td><td>${esc(j.site||"—")}</td><td class="num">${dmy(j.startDate)}</td></tr>`).join("")}</tbody></table></div>`:emptyBox("Tiada kerja aktif","Kerja yang ditanda Sedang Berjalan akan muncul di sini.")}
-  ${toInvoice.length?`<h2 class="sec" style="margin-top:16px">Selesai, belum diinvois</h2><div class="tbl-wrap"><table><tbody>${toInvoice.map(j=>`<tr class="click" data-act="open" data-v="kerja" data-id="${j.id}"><td class="mono">${esc(j.no)}</td><td>${esc(custName(j.customerId))}</td><td class="r num">${RM(linesSum(j.lines))}</td></tr>`).join("")}</tbody></table></div>`:""}
+  ${toInvoice.length?`<h2 class="sec" style="margin-top:16px">Selesai, belum diinvois</h2><div class="tbl-wrap"><table><tbody>${toInvoice.map(j=>`<tr class="click" data-act="open" data-v="kerja" data-id="${j.id}"><td class="mono">${esc(j.no)}</td><td>${esc(custName(j.customerId))}</td><td>${esc(jobItems(j))}</td></tr>`).join("")}</tbody></table></div>`:""}
   </section></div>`;
   return{cp,main};
 };
@@ -346,7 +349,7 @@ VIEWS.kerja=()=>{
   let main=chips("kerja",[["all","Semua"],...Object.entries(JOB_ST).map(([k,v])=>[k,v[0]])]);
   if(!S.jobs.length)main+=emptyBox("Belum ada rekod kerja","Satu rekod kerja mencatat siapa menyewa, aset atau pekerja yang dihantar, lokasi tapak dan tempoh. Dari sini anda cipta invois.",`<button class="btn pri" data-act="new" data-k="job">Cipta rekod kerja</button>`);
   else if(!rows.length)main+=emptyBox("Tiada padanan","Tukar penapis atau carian.");
-  else main+=`<div class="tbl-wrap"><table><thead><tr><th>No. Kerja</th><th>Pelanggan</th><th>Projek / Tapak</th><th>Mula</th><th>Tamat</th><th class="r">Nilai</th><th>Invois</th><th>Status</th></tr></thead><tbody>${rows.map(j=>{const ni=S.invoices.filter(i=>i.jobId===j.id&&i.status!=="cancelled").length;return `<tr class="click" data-act="open" data-v="kerja" data-id="${j.id}"><td class="mono">${esc(j.no)}${exTag(j)}</td><td>${esc(custName(j.customerId))}</td><td>${esc(j.site||"—")}</td><td class="num">${dmy(j.startDate)}</td><td class="num">${dmy(j.endDate)}</td><td class="r num">${RM(linesSum(j.lines))}</td><td>${ni?`<span class="pill p-ok">${ni} invois</span>`:`<span class="pill p-grey">Belum</span>`}</td><td>${pill(JOB_ST[j.status]||JOB_ST.draft)}</td></tr>`}).join("")}</tbody><tfoot><tr><td colspan="5">${rows.length} rekod</td><td class="r num">${RM(rows.reduce((a,j)=>a+linesSum(j.lines),0))}</td><td colspan="2"></td></tr></tfoot></table></div>`;
+  else main+=`<div class="tbl-wrap"><table><thead><tr><th>No. Kerja</th><th>Pelanggan</th><th>Projek / Tapak</th><th>Mula</th><th>Tamat</th><th>Item</th><th>Invois</th><th>Status</th></tr></thead><tbody>${rows.map(j=>{const ni=S.invoices.filter(i=>i.jobId===j.id&&i.status!=="cancelled").length;return `<tr class="click" data-act="open" data-v="kerja" data-id="${j.id}"><td class="mono">${esc(j.no)}${exTag(j)}</td><td>${esc(custName(j.customerId))}</td><td>${esc(j.site||"—")}</td><td class="num">${dmy(j.startDate)}</td><td class="num">${dmy(j.endDate)}</td><td>${esc(jobItems(j))}</td><td>${ni?`<span class="pill p-ok">${ni} invois</span>`:`<span class="pill p-grey">Belum</span>`}</td><td>${pill(JOB_ST[j.status]||JOB_ST.draft)}</td></tr>`}).join("")}</tbody><tfoot><tr><td colspan="5">${rows.length} rekod</td><td colspan="3"></td></tr></tfoot></table></div>`;
   return{cp,main};
 };
 
@@ -359,20 +362,20 @@ function ensureForm(kind,col,blank){
 function blankLine(){return{assetId:"",desc:"",qty:1,dur:1,unit:"Hari",rate:0}}
 
 function linesTable(F,editable){
-  const ls=F.data.lines||[];
+  const ls=F.data.lines||[];const P=F.kind==="invoice";const span=P?7:5;
   const assetOpts=sel=>`<option value="">— pilih —</option>`+S.assets.map(a=>`<option value="${a.id}" ${a.id===sel?"selected":""}>${esc(a.code?a.code+" · ":"")}${esc(a.name)}</option>`).join("");
-  return `<div class="tabs"><span>Butiran Sewaan</span></div><div class="lines"><table><thead><tr><th>Aset / Perkhidmatan</th><th>Keterangan</th><th class="r">Kuantiti</th><th class="r">Tempoh</th><th>Unit</th><th class="r">Kadar (RM)</th><th class="r">Jumlah</th>${editable?"<th></th>":""}</tr></thead><tbody>
-  ${ls.map((l,i)=>l.type==="note"?(editable?`<tr class="noteline"><td colspan="7"><textarea class="cell w" rows="3" data-l="${i}" data-lf="desc" placeholder="cth.&#10;Load : Cable (2 drums)&#10;Time : 09.00 am - 05.00 pm&#10;Pic : En. Hasyinor">${esc(l.desc)}</textarea></td><td><button class="xbtn" title="Buang nota" aria-label="Buang nota" data-act="delline" data-i="${i}">×</button></td></tr>`:`<tr class="noteline"><td colspan="7" class="pre">${esc(l.desc)}</td></tr>`):editable?`<tr>
+  return `<div class="tabs"><span>Butiran Sewaan</span></div><div class="lines"><table><thead><tr><th>Aset / Perkhidmatan</th><th>Keterangan</th><th class="r">Kuantiti</th><th class="r">Tempoh</th><th>Unit</th>${P?`<th class="r">Kadar (RM)</th><th class="r">Jumlah</th>`:""}${editable?"<th></th>":""}</tr></thead><tbody>
+  ${ls.map((l,i)=>l.type==="note"?(editable?`<tr class="noteline"><td colspan="${span}"><textarea class="cell w" rows="3" data-l="${i}" data-lf="desc" placeholder="cth.&#10;Load : Cable (2 drums)&#10;Time : 09.00 am - 05.00 pm&#10;Pic : En. Hasyinor">${esc(l.desc)}</textarea></td><td><button class="xbtn" title="Buang nota" aria-label="Buang nota" data-act="delline" data-i="${i}">×</button></td></tr>`:`<tr class="noteline"><td colspan="${span}" class="pre">${esc(l.desc)}</td></tr>`):editable?`<tr>
     <td><select class="cell" data-l="${i}" data-lf="assetId">${assetOpts(l.assetId)}</select></td>
     <td><textarea class="cell w" rows="${Math.max(2,String(l.desc||"").split("\n").length)}" data-l="${i}" data-lf="desc" placeholder="cth. Rental of lorry crane (VBE 6317)&#10;(Site A - Site B)">${esc(l.desc)}</textarea></td>
     <td><input class="cell n" type="number" step="any" min="0" data-l="${i}" data-lf="qty" value="${esc(l.qty)}"></td>
     <td><input class="cell n" type="number" step="any" min="0" data-l="${i}" data-lf="dur" value="${esc(l.dur)}"></td>
     <td><select class="cell" data-l="${i}" data-lf="unit">${UNITS.map(u=>`<option ${u===l.unit?"selected":""}>${u}</option>`).join("")}</select></td>
-    <td><input class="cell n" type="number" step="0.01" min="0" data-l="${i}" data-lf="rate" value="${esc(l.rate)}"></td>
-    <td class="r num" id="lt-${i}">${rmFmt.format(lineTotal(l))}</td>
+    ${P?`<td><input class="cell n" type="number" step="0.01" min="0" data-l="${i}" data-lf="rate" value="${esc(l.rate)}"></td>
+    <td class="r num" id="lt-${i}">${rmFmt.format(lineTotal(l))}</td>`:""}
     <td><button class="xbtn" title="Buang baris" aria-label="Buang baris" data-act="delline" data-i="${i}">×</button></td></tr>`
-   :`<tr><td>${esc((byId("assets",l.assetId)||{}).name||"—")}</td><td class="pre">${esc(l.desc)}</td><td class="r num">${esc(l.qty)}</td><td class="r num">${esc(l.dur)}</td><td>${esc(l.unit)}</td><td class="r num">${rmFmt.format(n(l.rate))}</td><td class="r num">${rmFmt.format(lineTotal(l))}</td></tr>`).join("")}
-  ${!ls.length?`<tr><td colspan="8" style="color:var(--muted)">Tiada baris lagi.</td></tr>`:""}
+   :`<tr><td>${esc((byId("assets",l.assetId)||{}).name||"—")}</td><td class="pre">${esc(l.desc)}</td><td class="r num">${esc(l.qty)}</td><td class="r num">${esc(l.dur)}</td><td>${esc(l.unit)}</td>${P?`<td class="r num">${rmFmt.format(n(l.rate))}</td><td class="r num">${rmFmt.format(lineTotal(l))}</td>`:""}</tr>`).join("")}
+  ${!ls.length?`<tr><td colspan="${span+1}" style="color:var(--muted)">Tiada baris lagi.</td></tr>`:""}
   </tbody></table>${editable?`<button class="addline" data-act="addline">+ Tambah baris</button><button class="addline" data-act="addnote">+ Tambah nota</button>`:""}</div>`;
 }
 function custSelect(F,editable){
@@ -424,7 +427,6 @@ function jobForm(){
       ${fld("SV Tapak / PIC","supervisor",F,ed,"text",'placeholder="Nama & no. telefon"')}
     </div>
     ${linesTable(F,ed)}
-    <div class="totals"><table><tr class="big"><td>Jumlah Nilai Kerja</td><td class="r num" id="tot-sum">${RM(linesSum(d.lines))}</td></tr></table></div>
     <div class="notes"><label for="f-notes" style="font-weight:600;font-size:13px">Catatan / Syarat</label>${ed?`<textarea id="f-notes" data-f="notes" placeholder="Syarat sewaan, minyak ditanggung pelanggan, dll.">${esc(d.notes)}</textarea>`:`<p>${esc(d.notes||"—")}</p>`}</div>
   </div>${chatter(F)}`;
   return{cp,main};
@@ -578,12 +580,12 @@ document.addEventListener("input",e=>{
   if(t.dataset.q){S.q[t.dataset.q]=t.value;const pos=t.selectionStart;render();const el=document.getElementById("q-"+t.dataset.q);if(el){el.focus();try{el.setSelectionRange(pos,pos)}catch(_){}}return}
   if(!form)return;
   if(t.dataset.f){const k=t.dataset.f;form.data[k]=t.type==="checkbox"?t.checked:(t.type==="number"?(t.value===""?"":n(t.value)):t.value);markDirty();refreshTotals();return}
-  if(t.dataset.lf){const l=form.data.lines[+t.dataset.l];const k=t.dataset.lf;l[k]=t.type==="number"?(t.value===""?"":n(t.value)):t.value;markDirty();refreshTotals()}
+  if(t.dataset.lf){if(t.tagName==="TEXTAREA")growTA(t);const l=form.data.lines[+t.dataset.l];const k=t.dataset.lf;l[k]=t.type==="number"?(t.value===""?"":n(t.value)):t.value;markDirty();refreshTotals()}
 });
 document.addEventListener("change",e=>{
   const t=e.target;if(!form)return;
   if(t.id==="f-logo"&&t.files&&t.files[0]){const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,320/Math.max(im.width,im.height));const c=document.createElement("canvas");c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext("2d").drawImage(im,0,0,c.width,c.height);form.data.logo=c.toDataURL("image/png");form.dirty=true;render()};im.onerror=()=>toast("Fail itu bukan gambar yang sah.");im.src=fr.result};fr.readAsDataURL(t.files[0]);return}
-  if(t.dataset.lf==="assetId"){const l=form.data.lines[+t.dataset.l];const a=byId("assets",t.value);if(a){l.desc=l.desc||(a.name+(a.plate?" ("+a.plate+")":""));l.unit=a.unit||l.unit;l.rate=n(a.rate)}render();return}
+  if(t.dataset.lf==="assetId"){const l=form.data.lines[+t.dataset.l];const a=byId("assets",t.value);if(a){l.desc=l.desc||(a.name+(a.plate?" ("+a.plate+")":""));l.unit=a.unit||l.unit;if(form.kind==="invoice")l.rate=n(a.rate)}render();return}
   if(t.dataset.f==="customerId"&&form.kind==="invoice"){const j=byId("jobs",form.data.jobId);if(j&&j.customerId!==t.value)form.data.jobId="";render();return}
   if(t.dataset.f==="jobId"&&form.kind==="invoice"){const j=byId("jobs",t.value);if(j&&!form.data.customerId)form.data.customerId=j.customerId;render();return}
   if(t.dataset.f==="date"&&form.kind==="invoice"){form.data.dueDate=addDays(t.value,S.company.terms??15);render()}
@@ -636,14 +638,14 @@ ACT.jobst=async d=>{
 ACT.mkinv=async()=>{
   const j=form.data,C=S.company;const id=newId("invoices");
   const already=S.invoices.filter(i=>i.jobId===form.id&&i.status!=="cancelled").length;
-  const inv={no:"",ref:j.po?j.po:"",jobId:form.id,customerId:j.customerId,date:todayISO(),dueDate:addDays(todayISO(),C.terms??15),status:"draft",taxRate:C.defaultTax??0,lines:clone(j.lines),payments:[],notes:"",log:[logEntry("Invois draf dicipta daripada "+j.no)],createdAt:new Date().toISOString()};
+  const inv={no:"",ref:j.po?j.po:"",jobId:form.id,customerId:j.customerId,date:todayISO(),dueDate:addDays(todayISO(),C.terms??15),status:"draft",taxRate:C.defaultTax??0,lines:clone(j.lines).map(l=>{if(l.type!=="note"){const a=byId("assets",l.assetId);l.rate=a?n(a.rate):n(l.rate)}return l}),payments:[],notes:"",log:[logEntry("Invois draf dicipta daripada "+j.no)],createdAt:new Date().toISOString()};
   if(j.example)inv.example=true;
   const doIt=async()=>{try{await save("invoices",id,inv);const jd=clone(j);jd.log=(jd.log||[]).concat(logEntry("Invois draf dicipta"));await save("jobs",form.id,jd);go("invois",id);toast("Invois draf dicipta")}catch(e){}};
   if(already)modal("Kerja ini sudah ada invois",`<p>${already} invois aktif sudah dicipta untuk ${esc(j.no)}. Cipta invois lain (cth. untuk bil bulanan atau bil tambahan)?</p>`,"Cipta juga",doIt);else doIt();
 };
 ACT.post=async()=>{
   const err=validate(form);if(err){toast(err);return}
-  if(!(form.data.lines||[]).length||linesSum(form.data.lines)<=0){toast("Invois perlu sekurang-kurangnya satu baris bernilai.");return}
+  if(!(form.data.lines||[]).length||linesSum(form.data.lines)<=0){toast("Masukkan harga (Kadar RM) untuk setiap baris sebelum mengesahkan invois.");return}
   const no=form.data.no||nextInvNo(form.data.date);
   try{await commit("invoices",{status:"posted",no},"Invois disahkan sebagai "+no);toast("Invois "+no+" disahkan")}catch(e){}
 };
@@ -699,7 +701,7 @@ function jrToJob(P){
   const base=asset?asset.name:("Rental of "+P.item.toLowerCase());
   const plate=asset&&asset.plate?" ("+asset.plate+")":"";
   const route=P.pickup||P.dropoff?"\n("+[titleCase(P.pickup),titleCase(P.dropoff)].filter(Boolean).join(" - ")+")":"";
-  const lines=[{assetId:asset?asset.id:"",desc:base+plate+route,qty:P.qty||1,dur:1,unit:asset?asset.unit||"Trip":"Trip",rate:asset?n(asset.rate):0}];
+  const lines=[{assetId:asset?asset.id:"",desc:base+plate+route,qty:P.qty||1,dur:1,unit:asset?asset.unit||"Trip":"Trip",rate:0}];
   const note=[P.time?"Time : "+P.time:"",P.supervisor?"Pic : "+P.supervisor:""].filter(Boolean).join("\n");
   if(note)lines.push({type:"note",desc:note});
   return{cust,asset,job:{no:P.no||nextNo("JOB",S.jobs),customerId:cust?cust.id:"",site:P.project,po:"",time:P.time,pickup:P.pickup,dropoff:P.dropoff,vehicle:P.vehicle,operator:P.driver,supervisor:P.supervisor,startDate:P.dateISO||todayISO(),endDate:"",status:P.status==="cancelled"?"draft":P.status,lines,notes:"",source:"job-request",log:[logEntry("Dicipta daripada Job Request"+(P.no?" "+P.no:""))],createdAt:new Date().toISOString()}};
@@ -724,7 +726,7 @@ ACT.jrpaste=()=>{
     $("#jr-prev").innerHTML=`<table style="width:100%">${row("No. Job",esc(P.no||"(auto) "+R.job.no))}${row("Status",esc(JOB_ST[R.job.status][0]))}${row("Tarikh",esc(dmy(R.job.startDate))+(P.time?" · "+esc(P.time):""))}
      ${row("Pelanggan",R.cust?esc(R.cust.name):P.company?esc(P.company)+" (pelanggan baharu)":"— tiada —",!R.cust)}${row("Projek",esc(P.project||"—"))}${row("Pickup",esc(P.pickup||"—"))}${row("Dropoff",esc(P.dropoff||"—"))}
      ${row("Kenderaan",esc(P.vehicle||"—"))}${row("Pemandu",esc(P.driver||"—"))}${row("SV Tapak",esc(P.supervisor||"—"))}
-     ${row("Item",esc((P.qty||1)+" × "+(P.item||"—"))+(R.asset?" → "+esc(R.asset.name)+" @ "+RM(R.asset.rate):" (tiada aset sepadan, kadar RM 0)"),!R.asset)}</table>`};
+     ${row("Item",esc((P.qty||1)+" × "+(P.item||"—"))+(R.asset?" → "+esc(R.asset.name):" (tiada aset sepadan)"),false)}</table>`};
   ta.addEventListener("input",prev);ta.focus();
 };
 
