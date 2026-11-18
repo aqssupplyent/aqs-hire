@@ -498,6 +498,7 @@ function jobForm(){
   const F=ensureForm("job","jobs",()=>({no:nextNo("JOB",S.jobs),customerId:"",site:"",po:"",operator:"",startDate:todayISO(),endDate:"",status:"draft",lines:[blankLine()],notes:"",log:[logEntry("Rekod kerja dicipta")],createdAt:new Date().toISOString()}));
   if(!F)return{cp:crumb([["Rekod Kerja","kerja"],["Tidak dijumpai"]]),main:emptyBox("Rekod tidak dijumpai","Rekod ini mungkin telah dipadam.")};
   const d=F.data,st=d.status;const ed=S.canWrite&&st!=="done"&&st!=="cancelled";
+  if(ed&&!F.synced){F.synced=true;if(syncNote(d))F.dirty=true}
   const invs=S.invoices.filter(i=>i.jobId===F.id);
   let acts=saveBtns(F);
   if(!F.dirty&&S.canWrite){
@@ -703,6 +704,8 @@ document.addEventListener("change",e=>{
   const t=e.target;if(!form)return;
   if(t.id==="f-logo"&&t.files&&t.files[0]){const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,320/Math.max(im.width,im.height));const c=document.createElement("canvas");c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext("2d").drawImage(im,0,0,c.width,c.height);form.data.logo=c.toDataURL("image/png");form.dirty=true;render()};im.onerror=()=>toast("Fail itu bukan gambar yang sah.");im.src=fr.result};fr.readAsDataURL(t.files[0]);return}
   if(t.dataset.lf==="assetId"){const l=form.data.lines[+t.dataset.l];l.assetId=t.value;form.dirty=true;const a=byId("assets",t.value);if(a){l.desc=buildDesc(a,lineContext(),l.desc);l.unit=a.unit||l.unit;if(form.kind==="invoice")l.rate=n(a.rate)}render();return}
+  if(form.kind==="job"&&["load","time","supervisor"].includes(t.dataset.f)){if(syncNote(form.data)){form.dirty=true;render()}return}
+  if(form.kind==="job"&&["pickup","dropoff"].includes(t.dataset.f)){if(syncRoutes(form.data)){form.dirty=true;render()}return}
   if(t.dataset.f==="driverId"&&form.kind==="job"){applyDriver(form.data,drivers().find(x=>x.id===t.value));form.dirty=true;render();return}
   if(t.dataset.f==="customerId"&&form.kind==="invoice"){const j=byId("jobs",form.data.jobId);if(j&&j.customerId!==t.value)form.data.jobId="";render();return}
   if(t.dataset.f==="jobId"&&form.kind==="invoice"){const j=byId("jobs",t.value);if(j&&!form.data.customerId)form.data.customerId=j.customerId;render();return}
@@ -724,7 +727,7 @@ ACT.kpi=d=>{S.jobFilter=null;S.flt[d.v]=d.k;go(d.v)};
 ACT.clearjf=()=>{S.jobFilter=null;render()};
 ACT.jobinvs=()=>{if(guardDirty())return;S.jobFilter=form.id;S.flt.invois="all";go("invois")};
 ACT.new=d=>{if(guardDirty())return;if(!S.canWrite){toast("Anda hanya boleh melihat.");return}const v={job:"kerja",invoice:"invois",customer:"pelanggan",asset:"aset"}[d.k];go(v,"new")};
-ACT.addline=()=>{form.data.lines.push(blankLine());form.dirty=true;render()};
+ACT.addline=()=>{addLineKeepNotes(form.data.lines,blankLine());form.dirty=true;render()};
 ACT.nologo=()=>{form.data.logo="";form.dirty=true;render()};
 ACT.descadd=d=>{const l=form.data.lines[+d.i];const cur=String(l.desc||"");if(cur.split("\n").some(x=>x.trim().toLowerCase()===d.t))return;l.desc=cur?cur+"\n"+d.t:d.t;form.dirty=true;render()};
 ACT.descreset=d=>{const l=form.data.lines[+d.i];l.desc=buildDesc(byId("assets",l.assetId),lineContext(),l.desc);form.dirty=true;render()};
@@ -822,6 +825,27 @@ function parseJR(text){
   out.dateISO=d?((d[3].length===2?"20"+d[3]:d[3])+"-"+d[2].padStart(2,"0")+"-"+d[1].padStart(2,"0")):"";
   return out;
 }
+const NOTE_KEYS=/^\s*(load|time|pic)\s*:/i;
+function syncNote(d){
+  const want=[d.load?"Load : "+d.load:"",d.time?"Time : "+d.time:"",d.supervisor?"Pic : "+d.supervisor:""].filter(Boolean);
+  const ls=d.lines||(d.lines=[]);
+  const idx=ls.findIndex(l=>l.type==="note"&&(l.auto||String(l.desc||"").split("\n").some(x=>NOTE_KEYS.test(x))));
+  if(!want.length&&idx<0)return false;
+  const others=idx>=0?String(ls[idx].desc||"").split("\n").filter(x=>x.trim()&&!NOTE_KEYS.test(x)):[];
+  const text=want.concat(others).join("\n");
+  if(idx>=0){ls[idx].auto=true;if(ls[idx].desc===text)return false;ls[idx].desc=text}
+  else ls.push({type:"note",auto:true,desc:text});
+  return true;
+}
+function syncRoutes(d){
+  let ch=false;const rt=routeText(d.pickup,d.dropoff);
+  (d.lines||[]).forEach(l=>{if(l.type==="note"||!l.assetId)return;const parts=String(l.desc||"").split("\n");
+    if(parts.length>1&&/^\(.*\)$/.test(parts[1].trim())){if(rt){if(parts[1]!==rt){parts[1]=rt;ch=true}}else{parts.splice(1,1);ch=true}}
+    else if(rt&&parts.length>=1&&parts[0]){parts.splice(1,0,rt);ch=true}
+    l.desc=parts.join("\n")});
+  return ch;
+}
+function addLineKeepNotes(ls,line){let k=ls.length;while(k>0&&ls[k-1].type==="note")k--;ls.splice(k,0,line)}
 function assetDesc(a,fallbackItem){
   const nm=String(a?a.name:fallbackItem||"").trim();if(!nm)return"";
   const base=/^rental\b/i.test(nm)?nm.charAt(0).toUpperCase()+nm.slice(1).toLowerCase():"Rental of "+nm.toLowerCase();
@@ -845,7 +869,7 @@ function jrToJob0(P){
   const route=P.pickup||P.dropoff?"\n"+routeText(P.pickup,P.dropoff):"";
   const lines=[{assetId:asset?asset.id:"",desc:base+plate+route,qty:P.qty||1,dur:1,unit:asset?asset.unit||"Trip":"Trip",rate:0}];
   const note=[P.load?"Load : "+P.load:"",P.time?"Time : "+P.time:"",P.supervisor?"Pic : "+P.supervisor:""].filter(Boolean).join("\n");
-  if(note)lines.push({type:"note",desc:note});
+  if(note)lines.push({type:"note",auto:true,desc:note});
   const drv=P.driver?drivers().find(x=>x.name&&P.driver.toLowerCase().includes(String(x.name).toLowerCase().split(" ")[0])):null;
   return{cust,asset,job:{load:P.load,branch:P.branch,driverId:drv?drv.id:"",no:P.no||nextNo("JOB",S.jobs),customerId:cust?cust.id:"",site:P.project,po:"",time:P.time,pickup:P.pickup,dropoff:P.dropoff,vehicle:P.vehicle,operator:P.driver,supervisor:P.supervisor,startDate:P.dateISO||todayISO(),endDate:"",status:P.status==="cancelled"?"draft":P.status,lines,notes:"",source:"job-request",log:[logEntry("Dicipta daripada Job Request"+(P.no?" "+P.no:""))],createdAt:new Date().toISOString()}};
 }
