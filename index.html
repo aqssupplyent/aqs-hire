@@ -828,8 +828,8 @@ function jrToJob0(P){
   const base=asset?asset.name:("Rental of "+P.item.toLowerCase());
   const plate=asset&&asset.plate?" ("+asset.plate+")":"";
   const route=P.pickup||P.dropoff?"\n("+[titleCase(P.pickup),titleCase(P.dropoff)].filter(Boolean).join(" - ")+")":"";
-  const lines=[{assetId:asset?asset.id:"",desc:P.load?P.load:base+plate+route,qty:P.qty||1,dur:1,unit:asset?asset.unit||"Trip":"Trip",rate:0}];
-  const note=[P.time?"Time : "+P.time:"",P.supervisor?"Pic : "+P.supervisor:""].filter(Boolean).join("\n");
+  const lines=[{assetId:asset?asset.id:"",desc:base+plate+route,qty:P.qty||1,dur:1,unit:asset?asset.unit||"Trip":"Trip",rate:0}];
+  const note=[P.load?"Load : "+P.load:"",P.time?"Time : "+P.time:"",P.supervisor?"Pic : "+P.supervisor:""].filter(Boolean).join("\n");
   if(note)lines.push({type:"note",desc:note});
   const drv=P.driver?drivers().find(x=>x.name&&P.driver.toLowerCase().includes(String(x.name).toLowerCase().split(" ")[0])):null;
   return{cust,asset,job:{load:P.load,branch:P.branch,driverId:drv?drv.id:"",no:P.no||nextNo("JOB",S.jobs),customerId:cust?cust.id:"",site:P.project,po:"",time:P.time,pickup:P.pickup,dropoff:P.dropoff,vehicle:P.vehicle,operator:P.driver,supervisor:P.supervisor,startDate:P.dateISO||todayISO(),endDate:"",status:P.status==="cancelled"?"draft":P.status,lines,notes:"",source:"job-request",log:[logEntry("Dicipta daripada Job Request"+(P.no?" "+P.no:""))],createdAt:new Date().toISOString()}};
@@ -918,7 +918,7 @@ VIEWS.tugasan=()=>{
   const act=mine.filter(j=>j.status==="confirmed"||j.status==="ongoing").sort((a,b)=>(a.startDate||"").localeCompare(b.startDate||""));
   const done=mine.filter(j=>j.do&&j.do.status==="signed").sort((a,b)=>(b.do.submittedAt||"").localeCompare(a.do.submittedAt||"")).slice(0,10);
   const card=j=>`<article class="tcard"><div class="th"><span class="mono">${esc(j.no)}</span>${pill(JOB_ST[j.status]||JOB_ST.draft)}</div>
-    <h3>${esc(custName(j.customerId))}</h3><dl>${dlRow("Tarikh",dmy(j.startDate)+(j.time?" · "+j.time:""))}${dlRow("Projek",j.site)}${dlRow("Pickup",j.pickup)}${dlRow("Dropoff",j.dropoff)}${dlRow("Kenderaan",j.vehicle)}${dlRow("SV Tapak",j.supervisor)}${dlRow("Load",j.load)}${dlRow("Kerja",j.load?"":jobItems(j))}${j.notes?dlRow("Catatan",j.notes):""}</dl>
+    <h3>${esc(custName(j.customerId))}</h3><dl>${dlRow("Tarikh",dmy(j.startDate)+(j.time?" · "+j.time:""))}${dlRow("Projek",j.site)}${dlRow("Pickup",j.pickup)}${dlRow("Dropoff",j.dropoff)}${dlRow("Kenderaan",j.vehicle)}${dlRow("SV Tapak",j.supervisor)}${dlRow("Kerja",jobItems(j))}${dlRow("Load",j.load)}${j.notes?dlRow("Catatan",j.notes):""}</dl>
     <div class="tact">${j.status==="confirmed"?`<button class="btn pri" data-act="accept" data-id="${j.id}">Terima Job</button>`:""}${j.status==="ongoing"&&!(j.do&&j.do.status==="signed")?`<button class="btn pri" data-act="dofill" data-id="${j.id}">Isi DO &amp; Tandatangan</button>`:""}${j.do&&j.do.status==="signed"?`<button class="btn" data-act="doprint" data-id="${j.id}">Lihat DO ${esc(j.do.no)}</button>`:""}</div></article>`;
   const cp=crumb([["Tugasan Saya"]])+(S.isDriver?`<div class="right"><span style="font-weight:600">${esc(driverName(curDriverId()))}${(()=>{const x=drivers().find(y=>y.id===curDriverId());return x&&x.plate?" · "+esc(x.plate):""})()}</span>${boundDriver()?"":`<button class="btn sm" data-act="switchdrv">Tukar pemandu</button>`}</div>`:"");
   let main=`<h2 class="sec">Job aktif</h2>`;
