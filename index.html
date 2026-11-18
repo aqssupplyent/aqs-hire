@@ -774,7 +774,7 @@ function loginView(mode,msg){
       if(mode==="login"){const{error}=await sb.auth.signInWithPassword({email:$("#l-email").value.trim(),password:$("#l-pwd").value});if(error)throw error}
       else if(mode==="forgot"){const{error}=await sb.auth.resetPasswordForEmail($("#l-email").value.trim(),{redirectTo:location.origin+location.pathname});if(error)throw error;er.style.color="var(--ok)";er.textContent="Pautan dihantar. Semak e-mel anda."}
       else{const{error}=await sb.auth.updateUser({password:$("#l-pwd").value});if(error)throw error;history.replaceState(null,"",location.pathname);location.reload()}
-    }catch(x){er.style.color="";er.textContent=/Invalid login/i.test(x.message||"")?"E-mel atau kata laluan salah.":(x.message||"Gagal. Cuba lagi.")}
+    }catch(x){er.style.color="";const m=x.message||"";er.textContent=/Invalid login/i.test(m)?"E-mel atau kata laluan salah.":/logins are disabled/i.test(m)?"Log masuk e-mel dimatikan di Supabase. Pentadbir perlu hidupkan Authentication → Sign In / Providers → Email.":/not confirmed/i.test(m)?"E-mel belum disahkan. Pentadbir perlu tanda Auto Confirm User atau sahkan pengguna di Supabase.":(m||"Gagal. Cuba lagi.")}
     b.disabled=false};
   const first=f.querySelector("input");first&&first.focus();
 }
