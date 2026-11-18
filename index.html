@@ -1046,52 +1046,7 @@ function doSummary(d,id){
   return `<div class="dosum"><div><small>Delivery Order</small><b class="mono">${esc(D.no)}</b></div><div><small>Diterima oleh</small><b>${esc(D.receiver&&D.receiver.name||"—")}</b><span>${esc(D.receiver&&D.receiver.signedAt?new Date(D.receiver.signedAt).toLocaleString("ms-MY",{dateStyle:"medium",timeStyle:"short"}):"")}</span></div>
    <div><small>Barang</small><span>${esc((D.items||[]).map(x=>x.desc+(x.qty?" ("+x.qty+")":"")).join(", "))}</span></div>${D.receiver&&D.receiver.sig?`<img src="${esc(D.receiver.sig)}" alt="Tandatangan penerima">`:""}<button class="btn sm" data-act="doprint" data-id="${esc(id)}">Cetak DO</button></div>`;
 }
-function doHTML(j){
-  const C=S.company,D=j.do||{},cu=byId("customers",j.customerId)||{};
-  const br=t=>esc(t||"").replace(/\n/g,"<br>");
-  const items=D.items||[];
-  const rows=items.map((it,i)=>`<tr><td class="c">${i+1}.</td><td>${br(it.desc)}</td><td class="c">${esc(it.qty)}</td></tr>`).join("")+Array.from({length:Math.max(0,9-items.length)},()=>`<tr class="blank"><td></td><td></td><td></td></tr>`).join("");
-  const remarks=String(C.doRemarks||"1) Trip package is within 5 hours.\n2) Day package is within 8 hours.\n3) Additional charges may apply for extra hours.");
-  const t=[D.timeFrom,D.timeTo].filter(Boolean).map(fmt12).join(" - ");
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><script>(function(){function fit(){var p=document.querySelector(".page");if(!p)return;p.style.zoom="";p.style.margin="";var w=document.documentElement.clientWidth,s=Math.min(1,(w-12)/p.offsetWidth);if(s<1){p.style.zoom=s;p.style.margin="6px auto"}}addEventListener("resize",fit);addEventListener("load",fit);document.addEventListener("DOMContentLoaded",fit);setTimeout(fit,300);setTimeout(fit,1000);addEventListener("beforeprint",function(){var p=document.querySelector(".page");p.style.zoom="";p.style.margin=""});addEventListener("afterprint",fit)})()<\/script><title>DO ${esc(D.no)}</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
-<style>@page{size:A4;margin:0}*{box-sizing:border-box}html,body{margin:0;background:#e9ebee}
-body{font-family:Roboto,Arial,Helvetica,sans-serif;color:#1d1d1f;font-size:12.5px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.page{width:210mm;min-height:297mm;margin:10mm auto;background:#fff;padding:12mm 16mm}
-.hd{display:flex;align-items:center;gap:8mm}.hd img{width:40mm;height:40mm;object-fit:contain}
-.co{flex:1;text-align:center;font-size:14px;line-height:1.5;text-transform:uppercase}
-.contact{display:flex;justify-content:center;gap:14mm;margin:2mm 0 5mm;font-size:13px}
-h1{text-align:center;font-size:19px;margin:0 0 6mm;text-decoration:underline;letter-spacing:.02em}
-.meta{display:grid;grid-template-columns:1.1fr 1fr;gap:8mm;margin-bottom:5mm}
-.ms{display:flex;gap:3mm}.ms .v{flex:1;border-bottom:1px dotted #555;min-height:20mm;font-size:14px;color:#0d2f7a;line-height:1.6}
-.rt td{padding:1.5mm 2mm;font-size:13px}.rt td:last-child{color:#0d2f7a;font-size:14px}.rt td.dono{color:#c41e1e;font-size:24px;font-weight:700}
-table.it{width:100%;border-collapse:collapse;border:1.5px solid #222}
-table.it th{border:1.5px solid #222;padding:2mm;font-weight:500}
-table.it td{border-left:1.5px solid #222;border-right:1.5px solid #222;padding:2mm 3mm;vertical-align:top;color:#0d2f7a;font-size:14px}
-table.it tr.blank td{height:8mm}.c{text-align:center}
-table.dl{width:100%;border-collapse:collapse;border:1.5px solid #222;border-top:0}
-table.dl td{padding:2mm 3mm;font-size:13px}table.dl td:first-child{width:42mm;white-space:nowrap}table.dl td:last-child{color:#0d2f7a;font-size:14px}
-.notes{display:grid;grid-template-columns:30mm 1fr;gap:1mm 2mm;margin-top:3mm;font-size:12px}
-.sigs{display:grid;grid-template-columns:1fr 1fr;gap:16mm;margin-top:12mm}
-.sig img{height:24mm;max-width:100%;object-fit:contain;display:block;margin:0 auto -4mm}
-.sig .ln{border-top:1px dotted #333;padding-top:1mm;font-size:12px}
-.sig .kv{display:grid;grid-template-columns:18mm 1fr;margin-top:2mm;font-size:12.5px}.sig .kv span:last-child{border-bottom:1px solid #333;color:#0d2f7a}
-.foot{margin-top:6mm;font-size:10.5px;color:#666;text-align:center}
-@media print{html,body{background:#fff}.page{margin:0!important;zoom:1!important}}.tb{position:sticky;top:0;z-index:5;text-align:center;padding:8px;background:#e9ebee}.tb button{font:inherit;font-size:15px;padding:10px 18px;border-radius:6px;border:0;background:#1d5a6e;color:#fff;font-weight:600;cursor:pointer}@media print{.tb{display:none}}</style></head><body><div class="tb"><button type="button" onclick="window.print()">Cetak / Simpan PDF</button></div><div class="page">
-<div class="hd"><img src="${esc(C.logo||LOGO_DATA||DEFAULT_LOGO)}" alt=""><div class="co">${esc(C.name||"AQS Supply Enterprise")}${C.regNo?" ("+esc(C.regNo)+")":""}<br>${br(C.address)}</div></div>
-<div class="contact">${C.phone?`<span>H/P : ${esc(C.phone)}</span>`:""}${C.email?`<span>Email : ${esc(C.email)}</span>`:""}</div>
-<h1>DELIVERY ORDER</h1>
-<div class="meta"><div class="ms"><span>M/S :</span><div class="v">${esc(cu.name||"")}${cu.address?"<br>"+br(cu.address):""}</div></div>
-<table class="rt"><tr><td>D.O. NO</td><td>:</td><td class="dono">${esc(D.no)}</td></tr><tr><td>DATE</td><td>:</td><td>${dmy(D.date)}</td></tr><tr><td>LORRY REG NO</td><td>:</td><td>${esc(D.lorryReg||"")}</td></tr><tr><td>CUSTOMER PO. NO.</td><td>:</td><td>${esc(D.customerPo||"")}</td></tr></table></div>
-<table class="it"><thead><tr><th style="width:14mm">NO.</th><th>DESCRIPTION</th><th style="width:36mm">QUANTITY</th></tr></thead><tbody>${rows}</tbody></table>
-<table class="dl"><tr><td>TIME OF DELIVERY :</td><td>${esc(t)}</td></tr><tr><td>FROM :</td><td>${esc(D.from||"")}</td></tr><tr><td>DELIVERY TO :</td><td>${esc(D.to||"")}</td></tr></table>
-<div class="notes"><span>Note</span><span>: I confirm that all goods received are in good order and condition.</span><span>Payment terms</span><span>: ${esc(C.doPay||"C.O.D")}</span><span>Remarks</span><span>${br(remarks).replace(/^/,": ")}</span></div>
-<div class="sigs"><div class="sig">${D.receiver&&D.receiver.sig?`<img src="${esc(D.receiver.sig)}" alt="">`:`<div style="height:24mm"></div>`}<div class="ln">(Receiver sign / comp stamp)</div>
- <div class="kv"><span>NAME</span><span>${esc(D.receiver&&D.receiver.name||"")}</span></div><div class="kv"><span>I/C NO</span><span>${esc(D.receiver&&D.receiver.ic||"")}</span></div><div class="kv"><span>DATE</span><span>${D.receiver&&D.receiver.signedAt?esc(new Date(D.receiver.signedAt).toLocaleString("en-GB",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})):""}</span></div></div>
- <div class="sig">${D.issuer&&D.issuer.sig?`<img src="${esc(D.issuer.sig)}" alt="">`:`<div style="height:24mm"></div>`}<div class="ln">(Issued by)</div>
- <div class="kv"><span>NAME</span><span>${esc(D.issuer&&D.issuer.name||"")}</span></div><div class="kv"><span>DATE</span><span>${dmy(D.date)}</span></div></div></div>
-<div class="foot">Digitally signed delivery order · ${esc(j.no)}</div>
-</div></body></html>`;
+function doHTML(j){return docShell("DO "+((j.do||{}).no||""),DO_CSS,doPage(j))
 }
 
 /* ---- Admin: Delivery Order list ---- */
@@ -1120,7 +1075,7 @@ function closeModal(){$("#overlay").innerHTML=""}
 async function getDL(){return{save:async({filename,data})=>{const type=filename.endsWith(".csv")?"text/csv;charset=utf-8":"text/html;charset=utf-8";const url=URL.createObjectURL(new Blob([data],{type}));const a=document.createElement("a");a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);return{status:"saved"}}}}
 ACT.printinv=()=>printHTML(invoiceHTML(form.data));
 function printHTML(html){const w=window.open("","_blank");if(!w){toast("Benarkan pop-up untuk mencetak.");return}w.document.write(html);if(window.innerWidth<820){w.document.close();return}w.document.close();w.focus();let k=0;const tryPrint=()=>{const imgs=[...w.document.images];if(k++<30&&(!w.document.fonts||w.document.fonts.status!=="loaded"||imgs.some(i=>!i.complete)))return setTimeout(tryPrint,150);w.print()};setTimeout(tryPrint,200)};
-function invoiceHTML(v){
+function invoicePage(v){
   const C=S.company,cu=byId("customers",v.customerId)||{},c=invCalc(v);
   const money=x=>"RM "+rmFmt.format(n(x));const br=t=>esc(t||"").replace(/\n/g,"<br>");
   const title=v.status==="draft"?"Draft Invoice":v.status==="cancelled"?"Cancelled Invoice":"Invoice "+esc(v.no);
@@ -1128,42 +1083,7 @@ function invoiceHTML(v){
     `<tr><td>${br(l.desc||(byId("assets",l.assetId)||{}).name||"")}</td><td class="r">${rmFmt.format(n(l.qty)*n(l.dur))}</td><td class="r">${rmFmt.format(n(l.rate))}</td><td class="r">${money(lineTotal(l))}</td></tr>`).join("");
   const pays=(v.payments||[]).map(p=>`<tr><td class="paid">Paid on ${dmy(p.date)}</td><td class="r paid">${money(p.amount)}</td></tr>`).join("");
   const termsDays=v.date&&v.dueDate?Math.round((new Date(v.dueDate)-new Date(v.date))/864e5):null;
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><script>(function(){function fit(){var p=document.querySelector(".page");if(!p)return;p.style.zoom="";p.style.margin="";var w=document.documentElement.clientWidth,s=Math.min(1,(w-12)/p.offsetWidth);if(s<1){p.style.zoom=s;p.style.margin="6px auto"}}addEventListener("resize",fit);addEventListener("load",fit);document.addEventListener("DOMContentLoaded",fit);setTimeout(fit,300);setTimeout(fit,1000);addEventListener("beforeprint",function(){var p=document.querySelector(".page");p.style.zoom="";p.style.margin=""});addEventListener("afterprint",fit)})()<\/script><title>${v.no?esc(v.no):"Draft Invoice"}</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap">
-<style>
-@page{size:A4;margin:0}
-*{box-sizing:border-box}
-html,body{margin:0;background:#e9ebee}
-body{font-family:Roboto,Arial,Helvetica,sans-serif;color:#222;font-size:12.5px;line-height:1.45;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.page{width:210mm;min-height:297mm;margin:10mm auto;background:#fff;position:relative;padding:0 12mm 24mm;display:flex;flex-direction:column}
-.band{position:relative;margin:0 -12mm;height:50mm;padding:11mm 12mm 0}
-.band::before{content:"";position:absolute;inset:0;background:#f9eaea;clip-path:polygon(0 0,100% 0,100% 72%,63% 72%,57% 100%,0 100%);z-index:0}
-.logo{position:absolute;z-index:1;left:12mm;top:7mm;width:42mm;height:42mm;display:flex;align-items:center;justify-content:center}
-.logo img{max-width:100%;max-height:100%}
-.co{position:absolute;z-index:1;right:12mm;top:9mm;text-align:right;font-size:12.5px;line-height:1.45}
-h1{position:absolute;z-index:1;right:12mm;top:39mm;line-height:1.2;margin:0;font-weight:400;font-size:27px;color:#b3262e}
-.cust{margin-top:6mm;font-size:13px}
-.meta{display:grid;grid-template-columns:1fr 1fr 1fr;margin-top:10mm}
-.meta b{display:block;font-weight:700;font-size:13px}
-table.l{width:100%;border-collapse:collapse;margin-top:8mm}
-table.l th{font-weight:400;text-align:left;padding:6px 8px;border-bottom:1px solid #444}
-table.l td{padding:8px;vertical-align:top}
-table.l tbody tr:nth-child(odd) td{background:#f2f3f5}
-table.l tbody tr{border-bottom:1px solid #e2e4e8}
-table.l tr.note td{font-style:italic}
-.r{text-align:right;white-space:nowrap}
-.terms{margin-top:5mm}
-.sum{display:flex;justify-content:space-between;align-items:flex-start;margin-top:4mm;gap:10mm}
-.pay{margin-top:9mm}
-table.t{border-collapse:collapse;min-width:72mm}
-table.t td{padding:7px 10px}
-table.t .tot td{background:#f2f3f5;color:#b3262e;font-weight:700}
-table.t .due td{font-weight:700;border-top:1px solid #444}
-.paid{font-style:italic}
-.foot{position:absolute;left:12mm;right:12mm;bottom:12mm;border-top:1px solid #222;padding-top:6px;display:flex;justify-content:space-between;font-size:12px}
-.foot span:last-child{color:#666}
-@media print{html,body{background:#fff}.page{margin:0!important;zoom:1!important;min-height:297mm;page-break-after:always}}
-.tb{position:sticky;top:0;z-index:5;text-align:center;padding:8px;background:#e9ebee}.tb button{font:inherit;font-size:15px;padding:10px 18px;border-radius:6px;border:0;background:#1d5a6e;color:#fff;font-weight:600;cursor:pointer}@media print{.tb{display:none}}</style></head><body><div class="tb"><button type="button" onclick="window.print()">Cetak / Simpan PDF</button></div><div class="page">
+  return `<div class="page invpage">
 <div class="band">
   <div class="logo"><img src="${esc(C.logo||LOGO_DATA||DEFAULT_LOGO)}" alt=""></div>
   <div class="co">${esc(C.name||"AQS Supply Enterprise")}${C.regNo?" ("+esc(C.regNo)+")":""}<br>${br(C.address)}${C.phone?"<br>Call &amp; WhatsApp : "+esc(C.phone):""}${C.email?"<br>Email : "+esc(C.email):""}${C.sstNo?"<br>SST No : "+esc(C.sstNo):""}</div>
@@ -1176,7 +1096,108 @@ ${termsDays!=null?`<div class="terms">Payment terms: ${termsDays} Days</div>`:""
 <div class="sum"><div class="pay">${v.no?`Payment Communication: <b>${esc(v.no)}</b><br>`:""}${C.bankAcc?`on this account: <b>${esc(C.bankHolder||C.name||"")} ${esc(C.bankAcc)}${C.bank?" ("+esc(C.bank)+")":""}</b>`:""}${v.notes&&v.notes!==C.footer?`<div style="margin-top:4mm;white-space:pre-line">${esc(v.notes)}</div>`:""}</div>
 <table class="t">${c.tax>0?`<tr><td>Untaxed Amount</td><td class="r">${money(c.sub)}</td></tr><tr><td>SST ${n(v.taxRate)}%</td><td class="r">${money(c.tax)}</td></tr>`:""}<tr class="tot"><td>Total</td><td class="r">${money(c.total)}</td></tr>${pays}${c.paid>0?`<tr class="due"><td>Amount Due</td><td class="r">${money(c.due)}</td></tr>`:""}</table></div>
 <div class="foot"><span>${esc(C.footer||"This is computer generated invoice no signature required.")}</span><span>Page 1 / 1</span></div>
-</div></body></html>`;
+</div>`;
+}
+function doPage(j){
+  const C=S.company,D=j.do||{},cu=byId("customers",j.customerId)||{};
+  const br=t=>esc(t||"").replace(/\n/g,"<br>");
+  const items=D.items||[];
+  const rows=items.map((it,i)=>`<tr><td class="c">${i+1}.</td><td>${br(it.desc)}</td><td class="c">${esc(it.qty)}</td></tr>`).join("")+Array.from({length:Math.max(0,7-items.length)},()=>`<tr class="blank"><td></td><td></td><td></td></tr>`).join("");
+  const remarks=String(C.doRemarks||"1) Trip package is within 5 hours.\n2) Day package is within 8 hours.\n3) Additional charges may apply for extra hours.");
+  const t=[D.timeFrom,D.timeTo].filter(Boolean).map(fmt12).join(" - ");
+  return `<div class="page dopage">
+<div class="hd"><img src="${esc(C.logo||LOGO_DATA||DEFAULT_LOGO)}" alt=""><div class="co">${esc(C.name||"AQS Supply Enterprise")}${C.regNo?" ("+esc(C.regNo)+")":""}<br>${br(C.address)}</div></div>
+<div class="contact">${C.phone?`<span>H/P : ${esc(C.phone)}</span>`:""}${C.email?`<span>Email : ${esc(C.email)}</span>`:""}</div>
+<h1>DELIVERY ORDER</h1>
+<div class="meta"><div class="ms"><span>M/S :</span><div class="v">${esc(cu.name||"")}${cu.address?"<br>"+br(cu.address):""}</div></div>
+<table class="rt"><tr><td>D.O. NO</td><td>:</td><td class="dono">${esc(D.no)}</td></tr><tr><td>DATE</td><td>:</td><td>${dmy(D.date)}</td></tr><tr><td>LORRY REG NO</td><td>:</td><td>${esc(D.lorryReg||"")}</td></tr><tr><td>CUSTOMER PO. NO.</td><td>:</td><td>${esc(D.customerPo||"")}</td></tr></table></div>
+<table class="it"><thead><tr><th style="width:14mm">NO.</th><th>DESCRIPTION</th><th style="width:36mm">QUANTITY</th></tr></thead><tbody>${rows}</tbody></table>
+<table class="dl"><tr><td>TIME OF DELIVERY :</td><td>${esc(t)}</td></tr><tr><td>FROM :</td><td>${esc(D.from||"")}</td></tr><tr><td>DELIVERY TO :</td><td>${esc(D.to||"")}</td></tr></table>
+<div class="notes"><span>Note</span><span>: I confirm that all goods received are in good order and condition.</span><span>Payment terms</span><span>: ${esc(C.doPay||"C.O.D")}</span><span>Remarks</span><span>${br(remarks).replace(/^/,": ")}</span></div>
+<div class="sigs"><div class="sig">${D.receiver&&D.receiver.sig?`<img src="${esc(D.receiver.sig)}" alt="">`:`<div style="height:20mm"></div>`}<div class="ln">(Receiver sign / comp stamp)</div>
+ <div class="kv"><span>NAME</span><span>${esc(D.receiver&&D.receiver.name||"")}</span></div><div class="kv"><span>I/C NO</span><span>${esc(D.receiver&&D.receiver.ic||"")}</span></div><div class="kv"><span>DATE</span><span>${D.receiver&&D.receiver.signedAt?esc(new Date(D.receiver.signedAt).toLocaleString("en-GB",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})):""}</span></div></div>
+ <div class="sig">${D.issuer&&D.issuer.sig?`<img src="${esc(D.issuer.sig)}" alt="">`:`<div style="height:20mm"></div>`}<div class="ln">(Issued by)</div>
+ <div class="kv"><span>NAME</span><span>${esc(D.issuer&&D.issuer.name||"")}</span></div><div class="kv"><span>DATE</span><span>${dmy(D.date)}</span></div></div></div>
+<div class="foot">Digitally signed delivery order · ${esc(j.no)}</div>
+</div>`;
+}
+const INV_CSS=`@page{size:A4;margin:0}
+*{box-sizing:border-box}
+html,body{margin:0;background:#e9ebee}
+body{font-family:Roboto,Arial,Helvetica,sans-serif;color:#222;font-size:12.5px;line-height:1.45;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.page.invpage{width:210mm;min-height:297mm;margin:10mm auto;background:#fff;position:relative;padding:0 12mm 24mm;display:flex;flex-direction:column}
+.invpage .band{position:relative;margin:0 -12mm;height:50mm;padding:11mm 12mm 0}
+.invpage .band::before{content:"";position:absolute;inset:0;background:#f9eaea;clip-path:polygon(0 0,100% 0,100% 72%,63% 72%,57% 100%,0 100%);z-index:0}
+.invpage .logo{position:absolute;z-index:1;left:12mm;top:7mm;width:42mm;height:42mm;display:flex;align-items:center;justify-content:center}
+.invpage .logo img{max-width:100%;max-height:100%}
+.invpage .co{position:absolute;z-index:1;right:12mm;top:9mm;text-align:right;font-size:12.5px;line-height:1.45}
+.invpage h1{position:absolute;z-index:1;right:12mm;top:39mm;line-height:1.2;margin:0;font-weight:400;font-size:27px;color:#b3262e}
+.invpage .cust{margin-top:6mm;font-size:13px}
+.invpage .meta{display:grid;grid-template-columns:1fr 1fr 1fr;margin-top:10mm}
+.invpage .meta b{display:block;font-weight:700;font-size:13px}
+.invpage table.l{width:100%;border-collapse:collapse;margin-top:8mm}
+.invpage table.l th{font-weight:400;text-align:left;padding:6px 8px;border-bottom:1px solid #444}
+.invpage table.l td{padding:8px;vertical-align:top}
+.invpage table.l tbody tr:nth-child(odd) td{background:#f2f3f5}
+.invpage table.l tbody tr{border-bottom:1px solid #e2e4e8}
+.invpage table.l tr.note td{font-style:italic}
+.invpage .r{text-align:right;white-space:nowrap}
+.invpage .terms{margin-top:5mm}
+.invpage .sum{display:flex;justify-content:space-between;align-items:flex-start;margin-top:4mm;gap:10mm}
+.invpage .pay{margin-top:9mm}
+.invpage table.t{border-collapse:collapse;min-width:72mm}
+.invpage table.t td{padding:7px 10px}
+.invpage table.t .tot td{background:#f2f3f5;color:#b3262e;font-weight:700}
+.invpage table.t .due td{font-weight:700;border-top:1px solid #444}
+.invpage .paid{font-style:italic}
+.invpage .foot{position:absolute;left:12mm;right:12mm;bottom:12mm;border-top:1px solid #222;padding-top:6px;display:flex;justify-content:space-between;font-size:12px}
+.invpage .foot span:last-child{color:#666}
+@media print{html,body{background:#fff}
+.page.invpage{margin:0!important;zoom:1!important;min-height:297mm;page-break-after:always}}
+.tb{position:sticky;top:0;z-index:5;text-align:center;padding:8px;background:#e9ebee}
+.tb button{font:inherit;font-size:15px;padding:10px 18px;border-radius:6px;border:0;background:#1d5a6e;color:#fff;font-weight:600;cursor:pointer}
+@media print{.tb{display:none}}`;
+const DO_CSS=`@page{size:A4;margin:0}
+*{box-sizing:border-box}
+html,body{margin:0;background:#e9ebee}
+body{font-family:Roboto,Arial,Helvetica,sans-serif;color:#1d1d1f;font-size:12.5px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.page.dopage{width:210mm;min-height:297mm;margin:10mm auto;background:#fff;padding:9mm 14mm 8mm}
+.dopage .hd{display:flex;align-items:center;gap:8mm}
+.dopage .hd img{width:32mm;height:32mm;object-fit:contain}
+.dopage .co{flex:1;text-align:center;font-size:14px;line-height:1.5;text-transform:uppercase}
+.dopage .contact{display:flex;justify-content:center;gap:14mm;margin:1mm 0 3mm;font-size:12.5px}
+.dopage h1{text-align:center;font-size:18px;margin:0 0 4mm;text-decoration:underline;letter-spacing:.02em}
+.dopage .meta{display:grid;grid-template-columns:1.1fr 1fr;gap:8mm;margin-bottom:3mm}
+.dopage .ms{display:flex;gap:3mm}
+.dopage .ms .v{flex:1;border-bottom:1px dotted #555;min-height:16mm;font-size:14px;color:#0d2f7a;line-height:1.6}
+.dopage .rt td{padding:1.5mm 2mm;font-size:13px}
+.dopage .rt td:last-child{color:#0d2f7a;font-size:14px}
+.dopage .rt td.dono{color:#c41e1e;font-size:24px;font-weight:700}
+.dopage table.it{width:100%;border-collapse:collapse;border:1.5px solid #222}
+.dopage table.it th{border:1.5px solid #222;padding:2mm;font-weight:500}
+.dopage table.it td{border-left:1.5px solid #222;border-right:1.5px solid #222;padding:2mm 3mm;vertical-align:top;color:#0d2f7a;font-size:14px}
+.dopage table.it tr.blank td{height:7mm}
+.dopage .c{text-align:center}
+.dopage table.dl{width:100%;border-collapse:collapse;border:1.5px solid #222;border-top:0}
+.dopage table.dl td{padding:2mm 3mm;font-size:13px}
+.dopage table.dl td:first-child{width:42mm;white-space:nowrap}
+.dopage table.dl td:last-child{color:#0d2f7a;font-size:14px}
+.dopage .notes{display:grid;grid-template-columns:30mm 1fr;gap:1mm 2mm;margin-top:3mm;font-size:12px}
+.dopage .sigs{display:grid;grid-template-columns:1fr 1fr;gap:16mm;margin-top:7mm}
+.dopage .sig img{height:20mm;max-width:100%;object-fit:contain;display:block;margin:0 auto -4mm}
+.dopage .sig .ln{border-top:1px dotted #333;padding-top:1mm;font-size:12px}
+.dopage .sig .kv{display:grid;grid-template-columns:18mm 1fr;margin-top:2mm;font-size:12.5px}
+.dopage .sig .kv span:last-child{border-bottom:1px solid #333;color:#0d2f7a}
+.dopage .foot{margin-top:4mm;font-size:10.5px;color:#666;text-align:center}
+@media print{html,body{background:#fff}
+.page.dopage{margin:0!important;zoom:1!important}}
+.tb{position:sticky;top:0;z-index:5;text-align:center;padding:8px;background:#e9ebee}
+.tb button{font:inherit;font-size:15px;padding:10px 18px;border-radius:6px;border:0;background:#1d5a6e;color:#fff;font-weight:600;cursor:pointer}
+@media print{.tb{display:none}}`;
+function docShell(title,css,pages){return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><script>(function(){function fit(){var ps=document.querySelectorAll(".page");if(!ps.length)return;ps.forEach(function(p){p.style.zoom="";p.style.margin=""});var w=document.documentElement.clientWidth,s=Math.min(1,(w-12)/ps[0].offsetWidth);if(s<1)ps.forEach(function(p){p.style.zoom=s;p.style.margin="6px auto"})}addEventListener("resize",fit);addEventListener("load",fit);document.addEventListener("DOMContentLoaded",fit);setTimeout(fit,300);setTimeout(fit,1000);addEventListener("beforeprint",function(){document.querySelectorAll(".page").forEach(function(p){p.style.zoom="";p.style.margin=""})});addEventListener("afterprint",fit)})()<\/script><title>${esc(title)}</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap">
+<style>${css}.page+.page{margin-top:10mm}@media print{.page{page-break-after:always;break-after:page}.page:last-child{page-break-after:auto;break-after:auto}}</style></head><body><div class="tb"><button type="button" onclick="window.print()">Cetak / Simpan PDF</button></div>${pages}</body></html>`}
+function invoiceHTML(v){const j=byId("jobs",v.jobId);const withDo=j&&j.do&&j.do.status==="signed";return docShell((v.no||"Draft Invoice")+(withDo?" + DO "+j.do.no:""),INV_CSS+(withDo?DO_CSS:""),withDo?invoicePage(v).replace("Page 1 / 1","Page 1 / 2")+doPage(j).replace("Digitally signed delivery order ·","Page 2 / 2 · Digitally signed delivery order ·"):invoicePage(v))
 }
 ACT.dlinv=async()=>{
   const dl=await getDL();if(!dl){toast("Muat turun tidak tersedia di paparan ini.");return}
