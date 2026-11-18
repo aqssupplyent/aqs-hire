@@ -519,6 +519,8 @@ function jobForm(){
       ${fld("Tarikh Tamat","endDate",F,ed,"date")}
       ${fld("No. PO / Rujukan","po",F,ed,"text",'placeholder="PO pelanggan"')}
       ${fld("Masa","time",F,ed,"text",'placeholder="cth. 9:30 AM"')}
+      ${fld("Load / Muatan","load",F,ed,"text",'placeholder="cth. 3 DRUM CABLES 3C X 500"')}
+      ${fld("Cawangan","branch",F,ed,"text",'placeholder="cth. OSJ"')}
       ${fld("Pickup","pickup",F,ed,"text",'placeholder="Lokasi ambil"')}
       ${fld("Kenderaan","vehicle",F,ed,"text",'placeholder="cth. AQS ENTERPRISE (sewa) / VBE 6317"')}
       ${fld("Dropoff","dropoff",F,ed,"text",'placeholder="Lokasi hantar"')}
@@ -797,13 +799,19 @@ ACT.note=async()=>{
 
 /* ---------- job request paste ---------- */
 function parseJR(text){
-  const out={qty:1,item:"",status:"draft",no:"",date:"",time:"",company:"",project:"",pickup:"",dropoff:"",vehicle:"",driver:"",supervisor:""};
-  const KEYS=[[/^(no\.?\s*job|job\s*no\.?|no\.?\s*kerja)$/,"no"],[/^(tarikh|date)$/,"date"],[/^(masa|time)$/,"time"],[/^(company|syarikat|client|pelanggan)$/,"company"],[/^(project|projek|site|tapak)$/,"project"],[/^(pickup|pick\s*up|ambil|dari)$/,"pickup"],[/^(drop\s*off|dropoff|hantar|ke)$/,"dropoff"],[/^(kenderaan|vehicle|lori|lorry)$/,"vehicle"],[/^(pemandu|driver|operator)$/,"driver"],[/^(sv\s*tapak|sv|supervisor|pic|penyelia)$/,"supervisor"]];
+  const out={load:"",branch:"",qty:1,item:"",status:"draft",no:"",date:"",time:"",company:"",project:"",pickup:"",dropoff:"",vehicle:"",driver:"",supervisor:""};
+  const KEYS=[[/^(load|muatan|barang|cargo)$/,"load"],[/^(branch|cawangan)$/,"branch"],[/^(no\.?\s*job|job\s*no\.?|no\.?\s*kerja)$/,"no"],[/^(tarikh|date)$/,"date"],[/^(masa|time)$/,"time"],[/^(company|syarikat|client|pelanggan)$/,"company"],[/^(project|projek|site|tapak)$/,"project"],[/^(pickup|pick\s*up|ambil|dari)$/,"pickup"],[/^(drop\s*off|dropoff|hantar|ke)$/,"dropoff"],[/^(kenderaan|vehicle|lori|lorry)$/,"vehicle"],[/^(pemandu|driver|operator)$/,"driver"],[/^(sv\s*tapak|sv|supervisor|pic|penyelia)$/,"supervisor"]];
   const lines=String(text||"").replace(/\r/g,"").split("\n").map(x=>x.replace(/[*_~]/g,"").trim()).filter(Boolean);
   lines.forEach((ln,i)=>{
     const m=/^([^:]{1,30}?)\s*:\s*(.*)$/.exec(ln);
     if(m){const k=m[1].toLowerCase().replace(/\s+/g," ").trim();const hit=KEYS.find(([re])=>re.test(k));if(hit){out[hit[1]]=m[2].trim();return}}
-    if(!out.item&&i<3&&!m){const h=/^(\d+(?:\.\d+)?)?\s*(?:x\s+)?(.+?)(?:\s*[—–-]+\s*([A-Za-z ]+))?$/.exec(ln);if(h){out.qty=h[1]?n(h[1]):1;out.item=h[2].trim();const st=(h[3]||"").toLowerCase();if(/confirm|sah/.test(st))out.status="confirmed";else if(/cancel|batal/.test(st))out.status="cancelled"}}
+    if(!out.item&&i<3&&!m){
+      const segs=ln.split(/\s*[—–]+\s*|\s+-\s+/).map(x=>x.trim()).filter(Boolean);
+      segs.forEach(sg=>{const low=sg.toLowerCase();if(/confirm|disahkan/.test(low))out.status="confirmed";else if(/cancel|batal/.test(low))out.status="cancelled"});
+      const withQty=segs.find(sg=>/^\d+(?:\.\d+)?\s*(?:x\s+)?[a-z]/i.test(sg));
+      if(withQty){const h=/^(\d+(?:\.\d+)?)\s*(?:x\s+)?(.+)$/i.exec(withQty);out.qty=n(h[1]);out.item=h[2].trim()}
+      else{const it=segs.find(sg=>!/confirm|disahkan|cancel|batal|job\s*request/i.test(sg));if(it)out.item=it}
+    }
   });
   const d=/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/.exec(out.date);
   out.dateISO=d?((d[3].length===2?"20"+d[3]:d[3])+"-"+d[2].padStart(2,"0")+"-"+d[1].padStart(2,"0")):"";
@@ -820,11 +828,11 @@ function jrToJob0(P){
   const base=asset?asset.name:("Rental of "+P.item.toLowerCase());
   const plate=asset&&asset.plate?" ("+asset.plate+")":"";
   const route=P.pickup||P.dropoff?"\n("+[titleCase(P.pickup),titleCase(P.dropoff)].filter(Boolean).join(" - ")+")":"";
-  const lines=[{assetId:asset?asset.id:"",desc:base+plate+route,qty:P.qty||1,dur:1,unit:asset?asset.unit||"Trip":"Trip",rate:0}];
+  const lines=[{assetId:asset?asset.id:"",desc:P.load?P.load:base+plate+route,qty:P.qty||1,dur:1,unit:asset?asset.unit||"Trip":"Trip",rate:0}];
   const note=[P.time?"Time : "+P.time:"",P.supervisor?"Pic : "+P.supervisor:""].filter(Boolean).join("\n");
   if(note)lines.push({type:"note",desc:note});
   const drv=P.driver?drivers().find(x=>x.name&&P.driver.toLowerCase().includes(String(x.name).toLowerCase().split(" ")[0])):null;
-  return{cust,asset,job:{driverId:drv?drv.id:"",no:P.no||nextNo("JOB",S.jobs),customerId:cust?cust.id:"",site:P.project,po:"",time:P.time,pickup:P.pickup,dropoff:P.dropoff,vehicle:P.vehicle,operator:P.driver,supervisor:P.supervisor,startDate:P.dateISO||todayISO(),endDate:"",status:P.status==="cancelled"?"draft":P.status,lines,notes:"",source:"job-request",log:[logEntry("Dicipta daripada Job Request"+(P.no?" "+P.no:""))],createdAt:new Date().toISOString()}};
+  return{cust,asset,job:{load:P.load,branch:P.branch,driverId:drv?drv.id:"",no:P.no||nextNo("JOB",S.jobs),customerId:cust?cust.id:"",site:P.project,po:"",time:P.time,pickup:P.pickup,dropoff:P.dropoff,vehicle:P.vehicle,operator:P.driver,supervisor:P.supervisor,startDate:P.dateISO||todayISO(),endDate:"",status:P.status==="cancelled"?"draft":P.status,lines,notes:"",source:"job-request",log:[logEntry("Dicipta daripada Job Request"+(P.no?" "+P.no:""))],createdAt:new Date().toISOString()}};
 }
 ACT.jrpaste=()=>{
   if(guardDirty())return;if(!S.canWrite){toast("Anda hanya boleh melihat.");return}
@@ -845,7 +853,7 @@ ACT.jrpaste=()=>{
     const row=(k,v,warn)=>`<tr><td style="color:var(--muted);padding:2px 10px 2px 0;white-space:nowrap">${k}</td><td style="padding:2px 0;white-space:normal${warn?";color:var(--amber)":""}">${v}</td></tr>`;
     $("#jr-prev").innerHTML=`<table style="width:100%">${row("No. Job",esc(P.no||"(auto) "+R.job.no))}${row("Status",esc(JOB_ST[R.job.status][0]))}${row("Tarikh",esc(dmy(R.job.startDate))+(P.time?" · "+esc(P.time):""))}
      ${row("Pelanggan",R.cust?esc(R.cust.name):P.company?esc(P.company)+" (pelanggan baharu)":"— tiada —",!R.cust)}${row("Projek",esc(P.project||"—"))}${row("Pickup",esc(P.pickup||"—"))}${row("Dropoff",esc(P.dropoff||"—"))}
-     ${row("Kenderaan",esc(P.vehicle||"—"))}${row("Pemandu",esc(P.driver||"—"))}${row("SV Tapak",esc(P.supervisor||"—"))}
+     ${row("Kenderaan",esc(P.vehicle||"—"))}${row("Pemandu",esc(P.driver||"—"))}${row("SV Tapak",esc(P.supervisor||"—"))}${P.load?row("Load",esc(P.load)):""}${P.branch?row("Cawangan",esc(P.branch)):""}
      ${row("Item",esc((P.qty||1)+" × "+(P.item||"—"))+(R.asset?" → "+esc(R.asset.name):" (tiada aset sepadan)"),false)}</table>`};
   ta.addEventListener("input",prev);ta.focus();
 };
@@ -910,7 +918,7 @@ VIEWS.tugasan=()=>{
   const act=mine.filter(j=>j.status==="confirmed"||j.status==="ongoing").sort((a,b)=>(a.startDate||"").localeCompare(b.startDate||""));
   const done=mine.filter(j=>j.do&&j.do.status==="signed").sort((a,b)=>(b.do.submittedAt||"").localeCompare(a.do.submittedAt||"")).slice(0,10);
   const card=j=>`<article class="tcard"><div class="th"><span class="mono">${esc(j.no)}</span>${pill(JOB_ST[j.status]||JOB_ST.draft)}</div>
-    <h3>${esc(custName(j.customerId))}</h3><dl>${dlRow("Tarikh",dmy(j.startDate)+(j.time?" · "+j.time:""))}${dlRow("Projek",j.site)}${dlRow("Pickup",j.pickup)}${dlRow("Dropoff",j.dropoff)}${dlRow("Kenderaan",j.vehicle)}${dlRow("SV Tapak",j.supervisor)}${dlRow("Kerja",jobItems(j))}${j.notes?dlRow("Catatan",j.notes):""}</dl>
+    <h3>${esc(custName(j.customerId))}</h3><dl>${dlRow("Tarikh",dmy(j.startDate)+(j.time?" · "+j.time:""))}${dlRow("Projek",j.site)}${dlRow("Pickup",j.pickup)}${dlRow("Dropoff",j.dropoff)}${dlRow("Kenderaan",j.vehicle)}${dlRow("SV Tapak",j.supervisor)}${dlRow("Load",j.load)}${dlRow("Kerja",j.load?"":jobItems(j))}${j.notes?dlRow("Catatan",j.notes):""}</dl>
     <div class="tact">${j.status==="confirmed"?`<button class="btn pri" data-act="accept" data-id="${j.id}">Terima Job</button>`:""}${j.status==="ongoing"&&!(j.do&&j.do.status==="signed")?`<button class="btn pri" data-act="dofill" data-id="${j.id}">Isi DO &amp; Tandatangan</button>`:""}${j.do&&j.do.status==="signed"?`<button class="btn" data-act="doprint" data-id="${j.id}">Lihat DO ${esc(j.do.no)}</button>`:""}</div></article>`;
   const cp=crumb([["Tugasan Saya"]])+(S.isDriver?`<div class="right"><span style="font-weight:600">${esc(driverName(curDriverId()))}${(()=>{const x=drivers().find(y=>y.id===curDriverId());return x&&x.plate?" · "+esc(x.plate):""})()}</span>${boundDriver()?"":`<button class="btn sm" data-act="switchdrv">Tukar pemandu</button>`}</div>`:"");
   let main=`<h2 class="sec">Job aktif</h2>`;
@@ -936,11 +944,17 @@ function sigPad(canvas){
   const up=()=>{drawing=false};canvas.addEventListener("pointerup",up);canvas.addEventListener("pointercancel",up);canvas.addEventListener("pointerleave",up);
   return{clear:()=>{fit();canvas.classList.remove("signed")},isEmpty:()=>!dirty,toData:()=>{const w=Math.min(600,canvas.width),h=Math.round(canvas.height*w/canvas.width);const c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(canvas,0,0,w,h);return c.toDataURL("image/png")}};
 }
+function loadItems(load){
+  const parts=String(load||"").split(/\s*[,;\n]\s*|\s+&\s+/).map(x=>x.trim()).filter(Boolean);
+  if(!parts.length)return[{desc:"",qty:""}];
+  const U="(?:drums?|rolls?|units?|pcs|pieces?|nos?|tan|tons?|tonnes?|lots?|bundles?|pallets?|sets?|batang|keping|kotak|boxes?|bags?|beg|trips?|lori|loads?)";
+  return parts.map(x=>{const m=new RegExp("^(\\d+(?:\\.\\d+)?\\s*"+U+")\\s+(.+)$","i").exec(x);return m?{qty:m[1].toUpperCase(),desc:m[2]}:{desc:x,qty:""}});
+}
 function doItemsHTML(){return DOF.D.items.map((it,i)=>`<div class="doitem"><span class="dn">${i+1}.</span><textarea rows="2" data-di="${i}" data-dk="desc" placeholder="cth. Kabel (stay site sampai siap)">${esc(it.desc)}</textarea><input data-di="${i}" data-dk="qty" value="${esc(it.qty)}" placeholder="Kuantiti, cth. 2 Drum">${DOF.D.items.length>1?`<button class="xbtn" aria-label="Buang barang" data-act="dodelitem" data-i="${i}">×</button>`:""}</div>`).join("")}
 ACT.dofill=d=>{
   const j=byId("jobs",d.id);if(!j)return;
   const clean=t=>String(t||"").replace(/\(.*?\)/g,"").trim();
-  DOF={id:d.id,D:{date:todayISO(),lorryReg:jobPlate(j)||((drivers().find(x=>x.id===(curDriverId()||j.driverId))||{}).plate||""),customerPo:j.po||"",items:[{desc:"",qty:""}],timeFrom:to24(j.time),timeTo:"",from:j.pickup||"",to:j.dropoff||"",rname:clean(j.supervisor),ric:"",iname:driverName(curDriverId())||driverName(j.driverId)||clean(j.operator)||(S.me&&S.me.name)||""}};
+  DOF={id:d.id,D:{date:todayISO(),lorryReg:jobPlate(j)||((drivers().find(x=>x.id===(curDriverId()||j.driverId))||{}).plate||""),customerPo:j.po||"",items:loadItems(j.load),timeFrom:to24(j.time),timeTo:"",from:j.pickup||"",to:j.dropoff||"",rname:clean(j.supervisor),ric:"",iname:driverName(curDriverId())||driverName(j.driverId)||clean(j.operator)||(S.me&&S.me.name)||""}};
   const D=DOF.D,f=(k,label,type,ph)=>`<div><label for="do-${k}">${label}</label><input id="do-${k}" type="${type||"text"}" data-dof="${k}" value="${esc(D[k])}" placeholder="${esc(ph||"")}"></div>`;
   $("#overlay").innerHTML=`<div class="dosheet" role="dialog" aria-modal="true" aria-label="Delivery Order"><div class="in">
    <div class="dotop"><button class="btn" data-act="doclose">← Kembali</button><b>Delivery Order</b><span class="mono">${esc(j.no)}</span></div>
