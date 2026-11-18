@@ -1098,6 +1098,11 @@ ${termsDays!=null?`<div class="terms">Payment terms: ${termsDays} Days</div>`:""
 <div class="foot"><span>${esc(C.footer||"This is computer generated invoice no signature required.")}</span><span>Page 1 / 1</span></div>
 </div>`;
 }
+function remarksHTML(t){
+  const RX=/^(\d+[).]|[a-z][).])\s*/i;
+  const items=String(t||"").split("\n").map(x=>x.trim()).filter(Boolean);
+  return "<ol>"+items.map(x=>{const m=RX.exec(x);return "<li><b>"+esc(m?m[1]:"•")+"</b><span>"+esc(m?x.slice(m[0].length):x)+"</span></li>"}).join("")+"</ol>";
+}
 function doPage(j){
   const C=S.company,D=j.do||{},cu=byId("customers",j.customerId)||{};
   const br=t=>esc(t||"").replace(/\n/g,"<br>");
@@ -1112,7 +1117,7 @@ function doPage(j){
 <table class="rt"><tr><td>D.O. NO</td><td>:</td><td class="dono">${esc(D.no)}</td></tr><tr><td>DATE</td><td>:</td><td>${dmy(D.date)}</td></tr><tr><td>LORRY REG NO</td><td>:</td><td>${esc(D.lorryReg||"")}</td></tr><tr><td>CUSTOMER PO. NO.</td><td>:</td><td>${esc(D.customerPo||"")}</td></tr></table></div>
 <table class="it"><thead><tr><th style="width:14mm">NO.</th><th>DESCRIPTION</th><th style="width:36mm">QUANTITY</th></tr></thead><tbody>${rows}</tbody></table>
 <table class="dl"><tr><td>TIME OF DELIVERY :</td><td>${esc(t)}</td></tr><tr><td>FROM :</td><td>${esc(D.from||"")}</td></tr><tr><td>DELIVERY TO :</td><td>${esc(D.to||"")}</td></tr></table>
-<div class="notes"><span>Note</span><span>: I confirm that all goods received are in good order and condition.</span><span>Payment terms</span><span>: ${esc(C.doPay||"C.O.D")}</span><span>Remarks</span><span>${br(remarks).replace(/^/,": ")}</span></div>
+<div class="notes"><span>Note</span><span>:</span><span>I confirm that all goods received are in good order and condition.</span><span>Payment terms</span><span>:</span><span>${esc(C.doPay||"C.O.D")}</span><span>Remarks</span><span>:</span>${remarksHTML(remarks)}</div>
 <div class="sigs"><div class="sig">${D.receiver&&D.receiver.sig?`<img src="${esc(D.receiver.sig)}" alt="">`:`<div style="height:20mm"></div>`}<div class="ln">(Receiver sign / comp stamp)</div>
  <div class="kv"><span>NAME</span><span>${esc(D.receiver&&D.receiver.name||"")}</span></div><div class="kv"><span>I/C NO</span><span>${esc(D.receiver&&D.receiver.ic||"")}</span></div><div class="kv"><span>DATE</span><span>${D.receiver&&D.receiver.signedAt?esc(new Date(D.receiver.signedAt).toLocaleString("en-GB",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})):""}</span></div></div>
  <div class="sig">${D.issuer&&D.issuer.sig?`<img src="${esc(D.issuer.sig)}" alt="">`:`<div style="height:20mm"></div>`}<div class="ln">(Issued by)</div>
@@ -1168,7 +1173,7 @@ body{font-family:Roboto,Arial,Helvetica,sans-serif;color:#1d1d1f;font-size:12.5p
 .dopage h1{text-align:center;font-size:18px;margin:0 0 4mm;text-decoration:underline;letter-spacing:.02em}
 .dopage .meta{display:grid;grid-template-columns:1.1fr 1fr;gap:8mm;margin-bottom:3mm}
 .dopage .ms{display:flex;gap:3mm}
-.dopage .ms .v{flex:1;border-bottom:1px dotted #555;min-height:16mm;font-size:14px;color:#0d2f7a;line-height:1.6}
+.dopage .ms .v{flex:1;min-height:16mm;font-size:14px;color:#0d2f7a;line-height:1.6}
 .dopage .rt td{padding:1.5mm 2mm;font-size:13px}
 .dopage .rt td:last-child{color:#0d2f7a;font-size:14px}
 .dopage .rt td.dono{color:#c41e1e;font-size:24px;font-weight:700}
@@ -1181,7 +1186,7 @@ body{font-family:Roboto,Arial,Helvetica,sans-serif;color:#1d1d1f;font-size:12.5p
 .dopage table.dl td{padding:2mm 3mm;font-size:13px}
 .dopage table.dl td:first-child{width:42mm;white-space:nowrap}
 .dopage table.dl td:last-child{color:#0d2f7a;font-size:14px}
-.dopage .notes{display:grid;grid-template-columns:30mm 1fr;gap:1mm 2mm;margin-top:3mm;font-size:12px}
+.dopage .notes{display:grid;grid-template-columns:28mm 3mm minmax(0,1fr);gap:1.2mm 1mm;margin-top:4mm;font-size:12px;line-height:1.45;align-items:start}.dopage .notes ol{list-style:none;margin:0;padding:0;display:grid;gap:.6mm}.dopage .notes li{display:grid;grid-template-columns:6mm minmax(0,1fr)}.dopage .notes li b{font-weight:400}
 .dopage .sigs{display:grid;grid-template-columns:1fr 1fr;gap:16mm;margin-top:7mm}
 .dopage .sig img{height:20mm;max-width:100%;object-fit:contain;display:block;margin:0 auto -4mm}
 .dopage .sig .ln{border-top:1px dotted #333;padding-top:1mm;font-size:12px}
