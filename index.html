@@ -698,6 +698,7 @@ document.addEventListener("change",e=>{
   const t=e.target;if(!form)return;
   if(t.id==="f-logo"&&t.files&&t.files[0]){const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,320/Math.max(im.width,im.height));const c=document.createElement("canvas");c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext("2d").drawImage(im,0,0,c.width,c.height);form.data.logo=c.toDataURL("image/png");form.dirty=true;render()};im.onerror=()=>toast("Fail itu bukan gambar yang sah.");im.src=fr.result};fr.readAsDataURL(t.files[0]);return}
   if(t.dataset.lf==="assetId"){const l=form.data.lines[+t.dataset.l];const a=byId("assets",t.value);if(a){l.desc=l.desc||(a.name+(a.plate?" ("+a.plate+")":""));l.unit=a.unit||l.unit;if(form.kind==="invoice")l.rate=n(a.rate)}render();return}
+  if(t.dataset.f==="driverId"&&form.kind==="job"){applyDriver(form.data,drivers().find(x=>x.id===t.value));form.dirty=true;render();return}
   if(t.dataset.f==="customerId"&&form.kind==="invoice"){const j=byId("jobs",form.data.jobId);if(j&&j.customerId!==t.value)form.data.jobId="";render();return}
   if(t.dataset.f==="jobId"&&form.kind==="invoice"){const j=byId("jobs",t.value);if(j&&!form.data.customerId)form.data.customerId=j.customerId;render();return}
   if(t.dataset.f==="date"&&form.kind==="invoice"){form.data.dueDate=addDays(t.value,S.company.terms??15);render()}
@@ -813,7 +814,8 @@ function findCustomer(name){const q=String(name||"").toLowerCase().replace(/sdn\
   return S.customers.find(c=>(c.name||"").toLowerCase()===String(name).toLowerCase())||S.customers.find(c=>(c.name||"").toLowerCase().includes(q))||null}
 function findAsset(item,vehicle){const t=(item+" "+vehicle).toLowerCase();
   return S.assets.find(a=>a.plate&&t.includes(a.plate.toLowerCase().replace(/\s+/g," ")))||S.assets.find(a=>a.name&&t.includes(a.name.toLowerCase()))||S.assets.find(a=>a.name&&item&&a.name.toLowerCase().includes(item.toLowerCase()))||null}
-function jrToJob(P){
+function jrToJob(P){const R=jrToJob0(P);if(R.job.driverId)applyDriver(R.job,drivers().find(x=>x.id===R.job.driverId));return R}
+function jrToJob0(P){
   const cust=findCustomer(P.company),asset=findAsset(P.item,P.vehicle);
   const base=asset?asset.name:("Rental of "+P.item.toLowerCase());
   const plate=asset&&asset.plate?" ("+asset.plate+")":"";
@@ -852,6 +854,14 @@ ACT.jrpaste=()=>{
 const drivers=()=>Array.isArray(S.company.drivers)?S.company.drivers:[];
 const driverName=id=>{const x=drivers().find(y=>y.id===id);return x?x.name:""};
 const jobDriverName=j=>driverName(j.driverId)||staffName(j.driverEmail)||String(j.operator||"").replace(/\(.*?\)/g,"").trim();
+function applyDriver(d,drv){
+  if(!drv)return d;
+  const plates=drivers().map(x=>x.plate).filter(Boolean);
+  let v=String(d.vehicle||"");plates.forEach(p=>{v=v.split(" / "+p).join("").split(p).join("")});v=v.replace(/\s*\/\s*$/,"").trim();
+  d.vehicle=drv.plate?(v?v+" / "+drv.plate:drv.plate):v;
+  d.operator=drv.name+(drv.phone?" ("+drv.phone+")":"");
+  return d;
+}
 const boundDriver=()=>{const me=String(S.userName||"").toLowerCase();return me?drivers().find(x=>x.email&&String(x.email).toLowerCase()===me)||null:null};
 const curDriverId=()=>{const b=boundDriver();return b?b.id:S.driverId};
 function readDriverId(){try{return localStorage.getItem("aqs-driver")||""}catch(e){return""}}
