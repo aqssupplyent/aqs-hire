@@ -669,7 +669,6 @@ VIEWS.syarikat=()=>{
    ${ta("address","Alamat",3,"No. 50, Jalan ...")}
    ${ta("footer","Nota kaki invois",2,"")}
    <div class="fld"><label for="f-doNext">No. DO Seterusnya</label><input id="f-doNext" type="number" min="1" data-f="doNext" value="${esc(F.data.doNext)}" placeholder="cth. 20164" ${ed?"":"disabled"}></div>
-   <div class="fld"><label for="f-doPay">Payment terms (DO)</label><input id="f-doPay" data-f="doPay" value="${esc(F.data.doPay??"C.O.D")}" ${ed?"":"disabled"}></div>
    ${ta("doRemarks","Remarks pada DO",3,"")}
   </div></div>
   <div class="sheet" style="margin-top:16px"><div class="sheet-head"><h2 class="sec">Pemandu</h2>${ed?`<button class="btn sm pri" data-act="drvadd">Tambah pemandu</button>`:""}</div>
@@ -1117,7 +1116,7 @@ function doPage(j){
 <table class="rt"><tr><td>D.O. NO</td><td>:</td><td class="dono">${esc(D.no)}</td></tr><tr><td>DATE</td><td>:</td><td>${dmy(D.date)}</td></tr><tr><td>LORRY REG NO</td><td>:</td><td>${esc(D.lorryReg||"")}</td></tr><tr><td>CUSTOMER PO. NO.</td><td>:</td><td>${esc(D.customerPo||"")}</td></tr></table></div>
 <table class="it"><thead><tr><th style="width:14mm">NO.</th><th>DESCRIPTION</th><th style="width:36mm">QUANTITY</th></tr></thead><tbody>${rows}</tbody></table>
 <table class="dl"><tr><td>TIME OF DELIVERY :</td><td>${esc(t)}</td></tr><tr><td>FROM :</td><td>${esc(D.from||"")}</td></tr><tr><td>DELIVERY TO :</td><td>${esc(D.to||"")}</td></tr></table>
-<div class="notes"><span>Note</span><span>:</span><span>I confirm that all goods received are in good order and condition.</span><span>Payment terms</span><span>:</span><span>${esc(C.doPay||"C.O.D")}</span><span>Remarks</span><span>:</span>${remarksHTML(remarks)}</div>
+<div class="notes"><span>Note</span><span>:</span><span>I confirm that all goods received are in good order and condition.</span><span>Remarks</span><span>:</span>${remarksHTML(remarks)}</div>
 <div class="sigs"><div class="sig">${D.receiver&&D.receiver.sig?`<img src="${esc(D.receiver.sig)}" alt="">`:`<div style="height:20mm"></div>`}<div class="ln">(Receiver sign / comp stamp)</div>
  <div class="kv"><span>NAME</span><span>${esc(D.receiver&&D.receiver.name||"")}</span></div><div class="kv"><span>I/C NO</span><span>${esc(D.receiver&&D.receiver.ic||"")}</span></div><div class="kv"><span>DATE</span><span>${D.receiver&&D.receiver.signedAt?esc(new Date(D.receiver.signedAt).toLocaleString("en-GB",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})):""}</span></div></div>
  <div class="sig">${D.issuer&&D.issuer.sig?`<img src="${esc(D.issuer.sig)}" alt="">`:`<div style="height:20mm"></div>`}<div class="ln">(Issued by)</div>
