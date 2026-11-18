@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>AQS Supply Hire</title>
+<link rel="icon" href="assets/logo-aqs.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
@@ -255,6 +256,8 @@ function toast(msg){const t=document.createElement("div");t.className="toast";t.
 function nextNo(prefix,list,date){const y=(date||todayISO()).slice(0,4);const re=new RegExp("^"+prefix+"/"+y+"/(\\d+)$");let mx=0;list.forEach(x=>{const m=re.exec(x.no||"");if(m)mx=Math.max(mx,+m[1])});return prefix+"/"+y+"/"+String(mx+1).padStart(4,"0")}
 function nextInvNo(date){const yy=(date||todayISO()).slice(2,4);let mx=Math.max(0,n(S.company.invNext)-1);S.invoices.forEach(i=>{const m=/^INV-\d{2}(\d{5})$/.exec(i.no||"");if(m)mx=Math.max(mx,+m[1])});return "INV-"+yy+String(mx+1).padStart(5,"0")}
 function jobItems(j){const ls=(j.lines||[]).filter(l=>l.type!=="note");if(!ls.length)return"—";const t=ls.map(l=>(n(l.qty)!==1?n(l.qty)+" × ":"")+String(l.desc||(byId("assets",l.assetId)||{}).name||"").split("\n")[0]).join(", ");return t.length>48?t.slice(0,46)+"…":t}
+const DEFAULT_LOGO=new URL("assets/logo-aqs.jpg",location.href).href;let LOGO_DATA=null;
+fetch(DEFAULT_LOGO).then(x=>x.ok?x.blob():null).then(b=>{if(!b)return;const fr=new FileReader();fr.onload=()=>{LOGO_DATA=fr.result};fr.readAsDataURL(b)}).catch(()=>{});
 const lineTotal=l=>l.type==="note"?0:n(l.qty)*n(l.dur)*n(l.rate);
 const linesSum=ls=>(ls||[]).reduce((a,l)=>a+lineTotal(l),0);
 function invCalc(v){const sub=linesSum(v.lines);const tax=sub*n(v.taxRate)/100;const total=sub+tax;const paid=(v.payments||[]).reduce((a,p)=>a+n(p.amount),0);const due=Math.max(0,total-paid);
@@ -551,7 +554,7 @@ VIEWS.syarikat=()=>{
   const cp=crumb([["Tetapan Syarikat"]])+`<div class="acts">${saveBtns(F)}</div>`;
   const ta=(k,label,rows,ph)=>`<div class="fld full"><label for="f-${k}">${label}</label><textarea id="f-${k}" data-f="${k}" rows="${rows}" placeholder="${esc(ph||"")}" ${ed?"":"disabled"}>${esc(F.data[k])}</textarea></div>`;
   const main=`<div class="sheet"><div class="sheet-head"><div class="doc-no"><small>Maklumat ini dicetak pada setiap invois</small>${esc(F.data.name||"Syarikat")}</div>
-    <div class="logo-pick">${F.data.logo?`<img src="${esc(F.data.logo)}" alt="Logo syarikat">`:`<span>Tiada logo</span>`}${ed?`<label class="btn sm" for="f-logo">${F.data.logo?"Tukar logo":"Muat naik logo"}</label><input id="f-logo" type="file" accept="image/*" hidden>${F.data.logo?`<button class="btn sm warn" data-act="nologo">Buang</button>`:""}`:""}</div></div>
+    <div class="logo-pick"><img src="${esc(F.data.logo||DEFAULT_LOGO)}" alt="Logo syarikat">${F.data.logo?"":`<span>Logo lalai AQS</span>`}${ed?`<label class="btn sm" for="f-logo">Tukar logo</label><input id="f-logo" type="file" accept="image/*" hidden>${F.data.logo?`<button class="btn sm" data-act="nologo">Guna logo lalai</button>`:""}`:""}</div></div>
    <div class="fields">
    ${fld("Nama Syarikat","name",F,ed,"text",'placeholder="AQS Supply Enterprise"')}${fld("No. Pendaftaran","regNo",F,ed,"text",'placeholder="LA0050422-A"')}${fld("Telefon / WhatsApp","phone",F,ed,"tel")}${fld("E-mel","email",F,ed,"email")}
    ${fld("Bank","bank",F,ed,"text",'placeholder="Maybank Berhad"')}${fld("No. Akaun Bank","bankAcc",F,ed)}${fld("Nama Pemegang Akaun","bankHolder",F,ed,"text",'placeholder="AQS Supply Ent"')}${fld("No. Pendaftaran SST","sstNo",F,ed,"text",'placeholder="kosongkan jika tiada"')}
@@ -741,7 +744,7 @@ function closeModal(){$("#overlay").innerHTML=""}
 
 /* ---------- downloads ---------- */
 async function getDL(){return{save:async({filename,data})=>{const type=filename.endsWith(".csv")?"text/csv;charset=utf-8":"text/html;charset=utf-8";const url=URL.createObjectURL(new Blob([data],{type}));const a=document.createElement("a");a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);return{status:"saved"}}}}
-ACT.printinv=()=>{const w=window.open("","_blank");if(!w){toast("Benarkan pop-up untuk mencetak.");return}w.document.write(invoiceHTML(form.data));w.document.close();w.focus();setTimeout(()=>w.print(),400)};
+ACT.printinv=()=>{const w=window.open("","_blank");if(!w){toast("Benarkan pop-up untuk mencetak.");return}w.document.write(invoiceHTML(form.data));w.document.close();w.focus();let k=0;const tryPrint=()=>{const imgs=[...w.document.images];if(k++<30&&(!w.document.fonts||w.document.fonts.status!=="loaded"||imgs.some(i=>!i.complete)))return setTimeout(tryPrint,150);w.print()};setTimeout(tryPrint,200)};
 function invoiceHTML(v){
   const C=S.company,cu=byId("customers",v.customerId)||{},c=invCalc(v);
   const money=x=>"RM "+rmFmt.format(n(x));const br=t=>esc(t||"").replace(/\n/g,"<br>");
@@ -760,7 +763,7 @@ body{font-family:Roboto,Arial,Helvetica,sans-serif;color:#222;font-size:12.5px;l
 .page{width:210mm;min-height:297mm;margin:10mm auto;background:#fff;position:relative;padding:0 12mm 24mm;display:flex;flex-direction:column}
 .band{position:relative;margin:0 -12mm;height:50mm;padding:11mm 12mm 0}
 .band::before{content:"";position:absolute;inset:0;background:#f9eaea;clip-path:polygon(0 0,100% 0,100% 72%,63% 72%,57% 100%,0 100%);z-index:0}
-.logo{position:absolute;z-index:1;left:12mm;top:9mm;width:34mm;height:34mm;background:#fff;display:flex;align-items:center;justify-content:center;padding:3mm}
+.logo{position:absolute;z-index:1;left:12mm;top:7mm;width:40mm;height:40mm;background:#fff;display:flex;align-items:center;justify-content:center;padding:1.5mm}
 .logo img{max-width:100%;max-height:100%}
 .co{position:absolute;z-index:1;right:12mm;top:9mm;text-align:right;font-size:12.5px;line-height:1.45}
 h1{position:absolute;z-index:1;right:12mm;top:39mm;line-height:1.2;margin:0;font-weight:400;font-size:27px;color:#b3262e}
@@ -787,7 +790,7 @@ table.t .due td{font-weight:700;border-top:1px solid #444}
 @media print{html,body{background:#fff}.page{margin:0;min-height:297mm;page-break-after:always}}
 </style></head><body><div class="page">
 <div class="band">
-  ${C.logo?`<div class="logo"><img src="${esc(C.logo)}" alt=""></div>`:""}
+  <div class="logo"><img src="${esc(C.logo||LOGO_DATA||DEFAULT_LOGO)}" alt=""></div>
   <div class="co">${esc(C.name||"AQS Supply Enterprise")}${C.regNo?" ("+esc(C.regNo)+")":""}<br>${br(C.address)}${C.phone?"<br>Call &amp; WhatsApp : "+esc(C.phone):""}${C.email?"<br>Email : "+esc(C.email):""}${C.sstNo?"<br>SST No : "+esc(C.sstNo):""}</div>
   <h1>${title}</h1>
 </div>
