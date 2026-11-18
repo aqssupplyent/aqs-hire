@@ -359,9 +359,20 @@ function invPill(v){if(v.status!=="posted")return pill(INV_ST[v.status]||INV_ST.
 function logEntry(msg){return{t:new Date().toISOString(),uid:S.uid||null,by:S.userName||"",msg}}
 
 /* ---------- db ---------- */
+/* Letter-case rules: names, places, loads and codes in CAPITALS; e-mail in lower case;
+   invoice line descriptions keep their sentence case. */
+const CASE_UP={customers:["name","regNo","address","contact"],assets:["code","name","plate"],jobs:["no","site","po","pickup","dropoff","load","branch","vehicle","operator","supervisor"],invoices:["no","ref"]};
+const CASE_LOW={customers:["email"]};
+function normCase(col,b){
+  const up=v=>typeof v==="string"?v.trim().replace(/[ \t]+/g," ").toUpperCase():v;
+  (CASE_UP[col]||[]).forEach(k=>{if(k in b)b[k]=up(b[k])});
+  (CASE_LOW[col]||[]).forEach(k=>{if(typeof b[k]==="string")b[k]=b[k].trim().toLowerCase()});
+  if(col==="jobs"&&b.do){const D=b.do;["lorryReg","customerPo","from","to"].forEach(k=>{if(k in D)D[k]=up(D[k])});(D.items||[]).forEach(it=>{it.desc=up(it.desc);it.qty=up(it.qty)});if(D.receiver)D.receiver.name=up(D.receiver.name);if(D.issuer)D.issuer.name=up(D.issuer.name)}
+  return b;
+}
 async function save(col,id,data){
   if(!S.db){toast("Pangkalan data tidak tersedia. Buka halaman ini sambil log masuk.");throw new Error("nodb")}
-  const body=clone(data);delete body.id;
+  const body=normCase(col,clone(data));delete body.id;
   try{await S.db.collection(col).doc(id).set(body)}
   catch(e){handleWriteErr(e);throw e}
 }
@@ -421,8 +432,8 @@ VIEWS.utama=()=>{
   const cp=crumb([["Papan Pemuka"]])+`<div class="right"><button class="btn" data-act="jrpaste">Tampal Job Request</button><button class="btn pri" data-act="new" data-k="job">+ Rekod Kerja Baharu</button></div>`;
   let main="";
   if(isLoaded()&&!S.jobs.length&&!S.invoices.length&&!S.customers.length){
-    main+=emptyBox("Selamat datang ke sistem sewaan AQS Supply","Mula dengan menambah pelanggan dan aset sewaan, kemudian cipta rekod kerja dan invois. Atau muatkan beberapa rekod contoh untuk melihat cara ia berfungsi; rekod contoh ditanda dan boleh dipadam sekali gus di Tetapan.",
-      `<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><button class="btn pri" data-act="new" data-k="customer">Tambah pelanggan</button><button class="btn" data-act="seed">Muatkan data contoh</button></div>`);
+    main+=emptyBox("Selamat Datang ke Sistem Sewaan AQS Supply","Mula dengan menambah pelanggan dan aset sewaan, kemudian cipta rekod kerja dan invois. Atau muatkan beberapa rekod contoh untuk melihat cara ia berfungsi; rekod contoh ditanda dan boleh dipadam sekali gus di Tetapan.",
+      `<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><button class="btn pri" data-act="new" data-k="customer">Tambah Pelanggan</button><button class="btn" data-act="seed">Muatkan Data Contoh</button></div>`);
     return{cp,main};
   }
   main+=`<div class="kpis">
@@ -432,9 +443,9 @@ VIEWS.utama=()=>{
     <button class="kpi" data-act="kpi" data-v="invois" data-k="paid"><div class="l">Kutipan Bulan Ini</div><div class="v">${RM(collected)}</div><div class="s">bayaran diterima ${esc(new Date().toLocaleDateString("ms-MY",{month:"long",year:"numeric"}))}</div></button>
   </div>`;
   const overRows=open.sort((a,b)=>(a.i.dueDate||"").localeCompare(b.i.dueDate||"")).slice(0,8);
-  main+=`<div class="grid2"><section><h2 class="sec">Invois perlu dikutip</h2>${overRows.length?`<div class="tbl-wrap"><table><thead><tr><th>No.</th><th>Pelanggan</th><th>Tarikh Akhir</th><th class="r">Baki</th><th>Status</th></tr></thead><tbody>${overRows.map(({i,c})=>`<tr class="click" data-act="open" data-v="invois" data-id="${i.id}"><td class="mono">${esc(i.no)}</td><td>${esc(custName(i.customerId))}</td><td class="num">${dmy(i.dueDate)}</td><td class="r num">${RM(c.due)}</td><td>${invPill(i)}</td></tr>`).join("")}</tbody></table></div>`:emptyBox("Tiada baki tertunggak","Semua invois yang disahkan sudah dibayar penuh.")}</section>
-  <section><h2 class="sec">Kerja di tapak sekarang</h2>${active.length?`<div class="tbl-wrap"><table><thead><tr><th>No. Kerja</th><th>Pelanggan</th><th>Tapak</th><th>Mula</th></tr></thead><tbody>${active.map(j=>`<tr class="click" data-act="open" data-v="kerja" data-id="${j.id}"><td class="mono">${esc(j.no)}</td><td>${esc(custName(j.customerId))}</td><td>${esc(j.site||"—")}</td><td class="num">${dmy(j.startDate)}</td></tr>`).join("")}</tbody></table></div>`:emptyBox("Tiada kerja aktif","Kerja yang ditanda Sedang Berjalan akan muncul di sini.")}
-  ${toInvoice.length?`<h2 class="sec" style="margin-top:16px">Selesai, belum diinvois</h2><div class="tbl-wrap"><table><tbody>${toInvoice.map(j=>`<tr class="click" data-act="open" data-v="kerja" data-id="${j.id}"><td class="mono">${esc(j.no)}</td><td>${esc(custName(j.customerId))}</td><td>${j.do&&j.do.no?`<span class="pill p-ok">DO ${esc(j.do.no)}</span>`:`<span class="pill p-grey">Tiada DO</span>`}</td></tr>`).join("")}</tbody></table></div>`:""}
+  main+=`<div class="grid2"><section><h2 class="sec">Invois Perlu Dikutip</h2>${overRows.length?`<div class="tbl-wrap"><table><thead><tr><th>No.</th><th>Pelanggan</th><th>Tarikh Akhir</th><th class="r">Baki</th><th>Status</th></tr></thead><tbody>${overRows.map(({i,c})=>`<tr class="click" data-act="open" data-v="invois" data-id="${i.id}"><td class="mono">${esc(i.no)}</td><td>${esc(custName(i.customerId))}</td><td class="num">${dmy(i.dueDate)}</td><td class="r num">${RM(c.due)}</td><td>${invPill(i)}</td></tr>`).join("")}</tbody></table></div>`:emptyBox("Tiada Baki Tertunggak","Semua invois yang disahkan sudah dibayar penuh.")}</section>
+  <section><h2 class="sec">Kerja di Tapak Sekarang</h2>${active.length?`<div class="tbl-wrap"><table><thead><tr><th>No. Kerja</th><th>Pelanggan</th><th>Tapak</th><th>Mula</th></tr></thead><tbody>${active.map(j=>`<tr class="click" data-act="open" data-v="kerja" data-id="${j.id}"><td class="mono">${esc(j.no)}</td><td>${esc(custName(j.customerId))}</td><td>${esc(j.site||"—")}</td><td class="num">${dmy(j.startDate)}</td></tr>`).join("")}</tbody></table></div>`:emptyBox("Tiada Kerja Aktif","Kerja yang ditanda Sedang Berjalan akan muncul di sini.")}
+  ${toInvoice.length?`<h2 class="sec" style="margin-top:16px">Selesai, Belum Diinvois</h2><div class="tbl-wrap"><table><tbody>${toInvoice.map(j=>`<tr class="click" data-act="open" data-v="kerja" data-id="${j.id}"><td class="mono">${esc(j.no)}</td><td>${esc(custName(j.customerId))}</td><td>${j.do&&j.do.no?`<span class="pill p-ok">DO ${esc(j.do.no)}</span>`:`<span class="pill p-grey">Tiada DO</span>`}</td></tr>`).join("")}</tbody></table></div>`:""}
   </section></div>`;
   return{cp,main};
 };
@@ -447,8 +458,8 @@ VIEWS.kerja=()=>{
   rows.sort((a,b)=>(b.no||"").localeCompare(a.no||""));
   const cp=crumb([["Rekod Kerja"]])+`<div class="acts"><button class="btn pri" data-act="new" data-k="job">Baharu</button><button class="btn" data-act="jrpaste">Tampal Job Request</button></div><div class="right">${searchBox("kerja","Cari no., pelanggan, tapak…")}</div>`;
   let main=chips("kerja",[["all","Semua"],...Object.entries(JOB_ST).map(([k,v])=>[k,v[0]])]);
-  if(!S.jobs.length)main+=emptyBox("Belum ada rekod kerja","Satu rekod kerja mencatat siapa menyewa, aset atau pekerja yang dihantar, lokasi tapak dan tempoh. Dari sini anda cipta invois.",`<button class="btn pri" data-act="new" data-k="job">Cipta rekod kerja</button>`);
-  else if(!rows.length)main+=emptyBox("Tiada padanan","Tukar penapis atau carian.");
+  if(!S.jobs.length)main+=emptyBox("Belum Ada Rekod Kerja","Satu rekod kerja mencatat siapa menyewa, aset atau pekerja yang dihantar, lokasi tapak dan tempoh. Dari sini anda cipta invois.",`<button class="btn pri" data-act="new" data-k="job">Cipta Rekod Kerja</button>`);
+  else if(!rows.length)main+=emptyBox("Tiada Padanan","Tukar penapis atau carian.");
   else main+=`<div class="tbl-wrap"><table><thead><tr><th>No. Kerja</th><th>Pelanggan</th><th>Projek / Tapak</th><th>Mula</th><th>Tamat</th><th>Item</th><th>Invois</th><th>Status</th></tr></thead><tbody>${rows.map(j=>{const ni=S.invoices.filter(i=>i.jobId===j.id&&i.status!=="cancelled").length;return `<tr class="click" data-act="open" data-v="kerja" data-id="${j.id}"><td class="mono">${esc(j.no)}${exTag(j)}</td><td>${esc(custName(j.customerId))}</td><td>${esc(j.site||"—")}</td><td class="num">${dmy(j.startDate)}</td><td class="num">${dmy(j.endDate)}</td><td>${esc(jobItems(j))}</td><td>${ni?`<span class="pill p-ok">${ni} invois</span>`:`<span class="pill p-grey">Belum</span>`}</td><td>${pill(JOB_ST[j.status]||JOB_ST.draft)}</td></tr>`}).join("")}</tbody><tfoot><tr><td colspan="5">${rows.length} rekod</td><td colspan="3"></td></tr></tfoot></table></div>`;
   return{cp,main};
 };
@@ -467,7 +478,7 @@ function linesTable(F,editable){
   return `<div class="tabs"><span>Butiran Sewaan</span></div><div class="lines"><table><thead><tr><th>Aset / Perkhidmatan</th><th>Keterangan</th><th class="r">Kuantiti</th><th class="r">Tempoh</th><th>Unit</th>${P?`<th class="r">Kadar (RM)</th><th class="r">Jumlah</th>`:""}${editable?"<th></th>":""}</tr></thead><tbody>
   ${ls.map((l,i)=>l.type==="note"?(editable?`<tr class="noteline"><td colspan="${span}"><textarea class="cell w" rows="3" data-l="${i}" data-lf="desc" placeholder="cth.&#10;Load : Cable (2 drums)&#10;Time : 09.00 am - 05.00 pm&#10;Pic : En. Hasyinor">${esc(l.desc)}</textarea></td><td><button class="xbtn" title="Buang nota" aria-label="Buang nota" data-act="delline" data-i="${i}">×</button></td></tr>`:`<tr class="noteline"><td colspan="${span}" class="pre">${esc(l.desc)}</td></tr>`):editable?`<tr>
     <td><select class="cell" data-l="${i}" data-lf="assetId">${assetOpts(l.assetId)}</select></td>
-    <td><textarea class="cell w" rows="${Math.max(2,String(l.desc||"").split("\n").length)}" data-l="${i}" data-lf="desc" placeholder="cth. Rental of lorry crane (VBE 6317)&#10;(Site A - Site B)">${esc(l.desc)}</textarea><div class="dchips"><button type="button" data-act="descadd" data-i="${i}" data-t="*stay at site">+ Stay at site</button><button type="button" data-act="descadd" data-i="${i}" data-t="*trip">+ Trip</button>${l.assetId?`<button type="button" data-act="descreset" data-i="${i}" title="Tulis semula dari aset dan lokasi">↻ Semula</button>`:""}</div></td>
+    <td><textarea class="cell w" rows="${Math.max(2,String(l.desc||"").split("\n").length)}" data-l="${i}" data-lf="desc" placeholder="cth. Rental of lorry crane (VBE 6317)&#10;(Site A - Site B)">${esc(l.desc)}</textarea><div class="dchips"><button type="button" data-act="descadd" data-i="${i}" data-t="*stay at site">+ Stay at Site</button><button type="button" data-act="descadd" data-i="${i}" data-t="*trip">+ Trip</button>${l.assetId?`<button type="button" data-act="descreset" data-i="${i}" title="Tulis semula dari aset dan lokasi">↻ Semula</button>`:""}</div></td>
     <td><input class="cell n" type="number" step="any" min="0" data-l="${i}" data-lf="qty" value="${esc(l.qty)}"></td>
     <td><input class="cell n" type="number" step="any" min="0" data-l="${i}" data-lf="dur" value="${esc(l.dur)}"></td>
     <td><select class="cell" data-l="${i}" data-lf="unit">${UNITS.map(u=>`<option ${u===l.unit?"selected":""}>${u}</option>`).join("")}</select></td>
@@ -476,7 +487,7 @@ function linesTable(F,editable){
     <td><button class="xbtn" title="Buang baris" aria-label="Buang baris" data-act="delline" data-i="${i}">×</button></td></tr>`
    :`<tr><td>${esc((byId("assets",l.assetId)||{}).name||"—")}</td><td class="pre">${esc(l.desc)}</td><td class="r num">${esc(l.qty)}</td><td class="r num">${esc(l.dur)}</td><td>${esc(l.unit)}</td>${P?`<td class="r num">${rmFmt.format(n(l.rate))}</td><td class="r num">${rmFmt.format(lineTotal(l))}</td>`:""}</tr>`).join("")}
   ${!ls.length?`<tr><td colspan="${span+1}" style="color:var(--muted)">Tiada baris lagi.</td></tr>`:""}
-  </tbody></table>${editable?`<button class="addline" data-act="addline">+ Tambah baris</button><button class="addline" data-act="addnote">+ Tambah nota</button>`:""}</div>`;
+  </tbody></table>${editable?`<button class="addline" data-act="addline">+ Tambah Baris</button><button class="addline" data-act="addnote">+ Tambah Nota</button>`:""}</div>`;
 }
 function custSelect(F,editable){
   if(!editable)return `<div class="ro">${esc(custName(F.data.customerId))}</div>`;
@@ -496,7 +507,7 @@ function saveBtns(F){return F.dirty?`<button class="btn pri" data-act="save">Sim
 
 function jobForm(){
   const F=ensureForm("job","jobs",()=>({no:nextNo("JOB",S.jobs),customerId:"",site:"",po:"",operator:"",startDate:todayISO(),endDate:"",status:"draft",lines:[blankLine()],notes:"",log:[logEntry("Rekod kerja dicipta")],createdAt:new Date().toISOString()}));
-  if(!F)return{cp:crumb([["Rekod Kerja","kerja"],["Tidak dijumpai"]]),main:emptyBox("Rekod tidak dijumpai","Rekod ini mungkin telah dipadam.")};
+  if(!F)return{cp:crumb([["Rekod Kerja","kerja"],["Tidak dijumpai"]]),main:emptyBox("Rekod Tidak Dijumpai","Rekod ini mungkin telah dipadam.")};
   const d=F.data,st=d.status;const ed=S.canWrite&&st!=="done"&&st!=="cancelled";
   if(ed&&!F.synced){F.synced=true;if(syncNote(d))F.dirty=true}
   const invs=S.invoices.filter(i=>i.jobId===F.id);
@@ -551,8 +562,8 @@ VIEWS.invois=()=>{
   const jf=S.jobFilter?byId("jobs",S.jobFilter):null;
   const cp=crumb([["Invois"]])+`<div class="acts"><button class="btn pri" data-act="new" data-k="invoice">Baharu</button><button class="btn" data-act="csv">Eksport CSV</button></div><div class="right">${searchBox("invois","Cari no., pelanggan, kerja…")}</div>`;
   let main=(jf?`<div class="chips"><button class="chip on" data-act="clearjf">Kerja ${esc(jf.no)} ×</button></div>`:"")+chips("invois",[["all","Semua"],["draft","Draf"],["open","Terbuka"],["unpaid","Belum Dibayar"],["partial","Sebahagian"],["overdue","Lewat Tempoh"],["paid","Dibayar"],["cancelled","Dibatalkan"]]);
-  if(!S.invoices.length)main+=emptyBox("Belum ada invois","Cara paling cepat: buka rekod kerja yang disahkan dan tekan Cipta Invois. Butiran sewaan akan disalin terus.",`<button class="btn pri" data-act="nav2" data-v="kerja">Pergi ke Rekod Kerja</button>`);
-  else if(!rows.length)main+=emptyBox("Tiada padanan","Tukar penapis atau carian.");
+  if(!S.invoices.length)main+=emptyBox("Belum Ada Invois","Cara paling cepat: buka rekod kerja yang disahkan dan tekan Cipta Invois. Butiran sewaan akan disalin terus.",`<button class="btn pri" data-act="nav2" data-v="kerja">Pergi ke Rekod Kerja</button>`);
+  else if(!rows.length)main+=emptyBox("Tiada Padanan","Tukar penapis atau carian.");
   else main+=`<div class="tbl-wrap"><table><thead><tr><th>No. Invois</th><th>Pelanggan</th><th>Rekod Kerja</th><th>Tarikh</th><th>Tarikh Akhir</th><th class="r">Jumlah</th><th class="r">Baki</th><th>Status</th></tr></thead><tbody>${rows.map(({i,c})=>`<tr class="click" data-act="open" data-v="invois" data-id="${i.id}"><td class="mono">${esc(i.no||"Draf")}${exTag(i)}</td><td>${esc(custName(i.customerId))}</td><td class="mono">${esc((byId("jobs",i.jobId)||{}).no||"—")}</td><td class="num">${dmy(i.date)}</td><td class="num">${dmy(i.dueDate)}</td><td class="r num">${RM(c.total)}</td><td class="r num">${i.status==="posted"?RM(c.due):"—"}</td><td>${invPill(i)}</td></tr>`).join("")}</tbody><tfoot><tr><td colspan="5">${rows.length} invois</td><td class="r num">${RM(rows.reduce((a,x)=>a+(x.i.status==="cancelled"?0:x.c.total),0))}</td><td class="r num">${RM(rows.reduce((a,x)=>a+(x.i.status==="posted"?x.c.due:0),0))}</td><td></td></tr></tfoot></table></div>`;
   return{cp,main};
 };
@@ -560,7 +571,7 @@ VIEWS.invois=()=>{
 function invForm(){
   const C=S.company;
   const F=ensureForm("invoice","invoices",()=>({no:"",jobId:"",customerId:"",date:todayISO(),dueDate:addDays(todayISO(),C.terms??15),status:"draft",taxRate:C.defaultTax??0,lines:[blankLine()],payments:[],notes:"",log:[logEntry("Invois draf dicipta")],createdAt:new Date().toISOString()}));
-  if(!F)return{cp:crumb([["Invois","invois"],["Tidak dijumpai"]]),main:emptyBox("Invois tidak dijumpai","Invois ini mungkin telah dipadam.")};
+  if(!F)return{cp:crumb([["Invois","invois"],["Tidak dijumpai"]]),main:emptyBox("Invois Tidak Dijumpai","Invois ini mungkin telah dipadam.")};
   const d=F.data,st=d.status,c=invCalc(d);const ed=S.canWrite&&st==="draft";
   let acts=saveBtns(F);
   if(!F.dirty&&S.canWrite){
@@ -594,7 +605,7 @@ function invForm(){
       ${pays.map((p,i)=>`<tr><td style="color:var(--muted)">Dibayar ${dmy(p.date)} · ${esc(p.method)}${p.ref?" · "+esc(p.ref):""} ${S.canWrite&&st==="posted"?`<button class="xbtn" title="Buang bayaran" aria-label="Buang bayaran" data-act="delpay" data-i="${i}">×</button>`:""}</td><td class="r num" style="color:var(--muted)">− ${RM(p.amount)}</td></tr>`).join("")}
       ${st==="posted"?`<tr class="${c.due>0.005?"due":""}"><td>Baki Perlu Dibayar</td><td class="r num">${RM(c.due)}</td></tr>`:""}
     </table></div>
-    <div class="notes"><label for="f-notes" style="font-weight:600;font-size:13px">Nota pada invois</label>${ed?`<textarea id="f-notes" data-f="notes">${esc(d.notes)}</textarea>`:`<p>${esc(d.notes||"—")}</p>`}</div>
+    <div class="notes"><label for="f-notes" style="font-weight:600;font-size:13px">Nota pada Invois</label>${ed?`<textarea id="f-notes" data-f="notes">${esc(d.notes)}</textarea>`:`<p>${esc(d.notes||"—")}</p>`}</div>
   </div>${chatter(F)}`;
   return{cp,main};
 }
@@ -605,7 +616,7 @@ VIEWS.pelanggan=()=>{
   const rows=S.customers.filter(c=>match("pelanggan",[c.name,c.contact,c.phone,c.email,c.regNo].join(" "))).sort((a,b)=>(a.name||"").localeCompare(b.name||""));
   const cp=crumb([["Pelanggan"]])+`<div class="acts"><button class="btn pri" data-act="new" data-k="customer">Baharu</button></div><div class="right">${searchBox("pelanggan","Cari nama, telefon…")}</div>`;
   let main="";
-  if(!S.customers.length)main=emptyBox("Belum ada pelanggan","Tambah syarikat atau individu yang menyewa daripada AQS Supply.",`<button class="btn pri" data-act="new" data-k="customer">Tambah pelanggan</button>`);
+  if(!S.customers.length)main=emptyBox("Belum Ada Pelanggan","Tambah syarikat atau individu yang menyewa daripada AQS Supply.",`<button class="btn pri" data-act="new" data-k="customer">Tambah Pelanggan</button>`);
   else main=`<div class="tbl-wrap"><table><thead><tr><th>Nama</th><th>No. SSM</th><th>Orang Hubungan</th><th>Telefon</th><th class="r">Kerja</th><th class="r">Baki Tertunggak</th></tr></thead><tbody>${rows.map(c=>{const due=S.invoices.filter(i=>i.customerId===c.id).reduce((a,i)=>a+(i.status==="posted"?invCalc(i).due:0),0);return `<tr class="click" data-act="open" data-v="pelanggan" data-id="${c.id}"><td>${esc(c.name)}${exTag(c)}</td><td class="mono">${esc(c.regNo||"—")}</td><td>${esc(c.contact||"—")}</td><td class="num">${esc(c.phone||"—")}</td><td class="r num">${S.jobs.filter(j=>j.customerId===c.id).length}</td><td class="r num" style="${due>0?"color:var(--bad)":""}">${RM(due)}</td></tr>`}).join("")}</tbody></table></div>`;
   return{cp,main};
 };
@@ -630,7 +641,7 @@ VIEWS.aset=()=>{
   const rows=S.assets.filter(a=>f==="all"||a.category===f).filter(a=>match("aset",[a.code,a.name,a.category,a.plate].join(" "))).sort((a,b)=>(a.code||a.name||"").localeCompare(b.code||b.name||""));
   const cp=crumb([["Aset & Kadar"]])+`<div class="acts"><button class="btn pri" data-act="new" data-k="asset">Baharu</button></div><div class="right">${searchBox("aset","Cari kod, nama, no. plat…")}</div>`;
   let main=chips("aset",[["all","Semua"],...CATS.map(c=>[c,c])]);
-  if(!S.assets.length)main+=emptyBox("Belum ada aset","Senaraikan jentera, kenderaan, peralatan atau kategori pekerja yang disewakan, bersama kadar standard. Kadar ini diisi automatik dalam rekod kerja.",`<button class="btn pri" data-act="new" data-k="asset">Tambah aset</button>`);
+  if(!S.assets.length)main+=emptyBox("Belum Ada Aset","Senaraikan jentera, kenderaan, peralatan atau kategori pekerja yang disewakan, bersama kadar standard. Kadar ini diisi automatik dalam rekod kerja.",`<button class="btn pri" data-act="new" data-k="asset">Tambah Aset</button>`);
   else main+=`<div class="tbl-wrap"><table><thead><tr><th>Kod</th><th>Nama</th><th>Kategori</th><th>No. Plat / Siri</th><th class="r">Kadar</th><th>Status</th></tr></thead><tbody>${rows.map(a=>`<tr class="click" data-act="open" data-v="aset" data-id="${a.id}"><td class="mono">${esc(a.code||"—")}</td><td>${esc(a.name)}${exTag(a)}</td><td>${esc(a.category||"—")}</td><td class="mono">${esc(a.plate||"—")}</td><td class="r num">${RM(a.rate)} / ${esc((a.unit||"Hari").toLowerCase())}</td><td>${pill(assetState(a))}</td></tr>`).join("")}</tbody></table></div>`;
   return{cp,main};
 };
@@ -658,27 +669,27 @@ VIEWS.syarikat=()=>{
   const cp=crumb([["Tetapan Syarikat"]])+`<div class="acts">${saveBtns(F)}</div>`;
   const ta=(k,label,rows,ph)=>`<div class="fld full"><label for="f-${k}">${label}</label><textarea id="f-${k}" data-f="${k}" rows="${rows}" placeholder="${esc(ph||"")}" ${ed?"":"disabled"}>${esc(F.data[k])}</textarea></div>`;
   const main=`<div class="sheet"><div class="sheet-head"><div class="doc-no"><small>Maklumat ini dicetak pada setiap invois</small>${esc(F.data.name||"Syarikat")}</div>
-    <div class="logo-pick"><img src="${esc(F.data.logo||DEFAULT_LOGO)}" alt="Logo syarikat">${F.data.logo?"":`<span>Logo lalai AQS</span>`}${ed?`<label class="btn sm" for="f-logo">Tukar logo</label><input id="f-logo" type="file" accept="image/*" hidden>${F.data.logo?`<button class="btn sm" data-act="nologo">Guna logo lalai</button>`:""}`:""}</div></div>
+    <div class="logo-pick"><img src="${esc(F.data.logo||DEFAULT_LOGO)}" alt="Logo syarikat">${F.data.logo?"":`<span>Logo lalai AQS</span>`}${ed?`<label class="btn sm" for="f-logo">Tukar Logo</label><input id="f-logo" type="file" accept="image/*" hidden>${F.data.logo?`<button class="btn sm" data-act="nologo">Guna Logo Lalai</button>`:""}`:""}</div></div>
    <div class="fields">
    ${fld("Nama Syarikat","name",F,ed,"text",'placeholder="AQS Supply Enterprise"')}${fld("No. Pendaftaran","regNo",F,ed,"text",'placeholder="LA0050422-A"')}${fld("Telefon / WhatsApp","phone",F,ed,"tel")}${fld("E-mel","email",F,ed,"email")}
    ${fld("Bank","bank",F,ed,"text",'placeholder="Maybank Berhad"')}${fld("No. Akaun Bank","bankAcc",F,ed)}${fld("Nama Pemegang Akaun","bankHolder",F,ed,"text",'placeholder="AQS Supply Ent"')}${fld("No. Pendaftaran SST","sstNo",F,ed,"text",'placeholder="kosongkan jika tiada"')}
    <div class="fld"><label for="f-defaultTax">Kadar SST Lalai (%)</label><input id="f-defaultTax" type="number" step="0.01" min="0" data-f="defaultTax" value="${esc(F.data.defaultTax)}" ${ed?"":"disabled"}></div>
-   <div class="fld"><label for="f-terms">Tempoh Bayaran (hari)</label><input id="f-terms" type="number" min="0" data-f="terms" value="${esc(F.data.terms)}" ${ed?"":"disabled"}></div>
+   <div class="fld"><label for="f-terms">Tempoh Bayaran (Hari)</label><input id="f-terms" type="number" min="0" data-f="terms" value="${esc(F.data.terms)}" ${ed?"":"disabled"}></div>
    <div class="fld"><label for="f-invNext">No. Invois Seterusnya</label><input id="f-invNext" type="number" min="1" data-f="invNext" value="${esc(F.data.invNext)}" placeholder="cth. 1264 → INV-2601264" ${ed?"":"disabled"}></div>
-   <div class="fld"><label>Contoh no. invois</label><div class="ro mono">${esc(nextInvNo())}</div></div>
+   <div class="fld"><label>Contoh No. Invois</label><div class="ro mono">${esc(nextInvNo())}</div></div>
    ${ta("address","Alamat",3,"No. 50, Jalan ...")}
-   ${ta("footer","Nota kaki invois",2,"")}
+   ${ta("footer","Nota Kaki Invois",2,"")}
    <div class="fld"><label for="f-doNext">No. DO Seterusnya</label><input id="f-doNext" type="number" min="1" data-f="doNext" value="${esc(F.data.doNext)}" placeholder="cth. 20164" ${ed?"":"disabled"}></div>
    ${ta("doRemarks","Remarks pada DO",3,"")}
   </div></div>
-  <div class="sheet" style="margin-top:16px"><div class="sheet-head"><h2 class="sec">Pemandu</h2>${ed?`<button class="btn sm pri" data-act="drvadd">Tambah pemandu</button>`:""}</div>
+  <div class="sheet" style="margin-top:16px"><div class="sheet-head"><h2 class="sec">Pemandu</h2>${ed?`<button class="btn sm pri" data-act="drvadd">Tambah Pemandu</button>`:""}</div>
    <div class="tbl-wrap"><table><thead><tr><th>Nama</th><th>Telefon</th><th>No. Lori</th><th>Akaun log masuk</th><th class="r">Job aktif</th><th></th></tr></thead><tbody>${drivers().map(x=>`<tr><td>${esc(x.name)}</td><td class="num">${esc(x.phone||"—")}</td><td class="mono">${esc(x.plate||"—")}</td><td>${x.email?esc(x.email)+(S.staff.some(y=>String(y.email).toLowerCase()===String(x.email).toLowerCase())?"":` <span class="pill p-amber">belum didaftar</span>`):`<span style="color:var(--muted)">akaun bersama</span>`}</td><td class="r num">${S.jobs.filter(j=>j.driverId===x.id&&(j.status==="confirmed"||j.status==="ongoing")).length}</td><td class="r">${ed?`<button class="btn sm" data-act="drvedit" data-id="${esc(x.id)}">Ubah</button> <button class="btn sm warn" data-act="drvdel" data-id="${esc(x.id)}">Buang</button>`:""}</td></tr>`).join("")||`<tr><td colspan="6" style="color:var(--muted)">Belum ada pemandu. Tambah nama pemandu supaya mereka boleh memilih nama sendiri di telefon.</td></tr>`}</tbody></table></div>
    <p style="color:var(--muted);font-size:13px;margin:10px 0 0">Jika pemandu ada akaun log masuk sendiri (cth. vbe6317@aqssupply.com), isi di "Akaun log masuk": sistem terus kenal pemandu itu dan dia hanya nampak job sendiri. Akaun itu juga perlu dicipta di Supabase → Authentication → Users.</p></div>
-  <div class="sheet" style="margin-top:16px"><div class="sheet-head"><h2 class="sec">Akaun Log Masuk</h2>${S.me&&S.me.role==="admin"?`<button class="btn sm pri" data-act="staffadd">Tambah akaun</button>`:""}</div>
+  <div class="sheet" style="margin-top:16px"><div class="sheet-head"><h2 class="sec">Akaun Log Masuk</h2>${S.me&&S.me.role==="admin"?`<button class="btn sm pri" data-act="staffadd">Tambah Akaun</button>`:""}</div>
    <div class="tbl-wrap"><table><thead><tr><th>Nama</th><th>E-mel</th><th>Peranan</th><th></th></tr></thead><tbody>${S.staff.map(x=>`<tr><td>${esc(x.name||"—")}</td><td>${esc(x.email)}</td><td>${x.role==="driver"?`<span class="pill p-amber">Pemandu</span>`:`<span class="pill p-info">Admin</span>`}</td><td class="r">${S.me&&S.me.role==="admin"&&String(x.email).toLowerCase()!==String(S.userName).toLowerCase()?`<button class="btn sm warn" data-act="staffdel" data-email="${esc(x.email)}">Buang</button>`:""}</td></tr>`).join("")||`<tr><td colspan="4" style="color:var(--muted)">Senarai staf tidak dapat dibaca. Jalankan SQL 002 di Supabase.</td></tr>`}</tbody></table></div>
    <p style="color:var(--muted);font-size:13px;margin:10px 0 0">Setiap akaun di sini juga perlu dicipta di Supabase → Authentication → Users → Add user (tanda Auto Confirm User) dengan e-mel dan kata laluan yang sama. Untuk akaun pemandu bersama, e-mel tidak perlu wujud, contohnya pemandu@aqssupply.com.</p></div>
-  <div class="sheet" style="margin-top:16px"><h2 class="sec">Data contoh</h2><p style="color:var(--muted);margin:0 0 10px">${nEx?`${nEx} rekod bertanda <span class="ex">contoh</span> ada dalam sistem.`:"Tiada rekod contoh dalam sistem."}</p>
-   <div style="display:flex;gap:8px;flex-wrap:wrap">${nEx?`<button class="btn warn" data-act="unseed">Padam semua data contoh</button>`:`<button class="btn" data-act="seed">Muatkan data contoh</button>`}</div></div>`;
+  <div class="sheet" style="margin-top:16px"><h2 class="sec">Data Contoh</h2><p style="color:var(--muted);margin:0 0 10px">${nEx?`${nEx} rekod bertanda <span class="ex">contoh</span> ada dalam sistem.`:"Tiada rekod contoh dalam sistem."}</p>
+   <div style="display:flex;gap:8px;flex-wrap:wrap">${nEx?`<button class="btn warn" data-act="unseed">Padam Semua Data Contoh</button>`:`<button class="btn" data-act="seed">Muatkan Data Contoh</button>`}</div></div>`;
   return{cp,main};
 };
 
@@ -742,7 +753,7 @@ function validate(F){
 }
 ACT.save=async()=>{
   const F=form;
-  if(F.kind==="company"){F.data.drivers=clone(drivers());try{await S.db.doc("config/company").set(clone(F.data));F.dirty=false;toast("Tetapan disimpan");render()}catch(e){handleWriteErr(e)}return}
+  if(F.kind==="company"){F.data.drivers=clone(drivers());if(F.data.email)F.data.email=String(F.data.email).trim().toLowerCase();try{await S.db.doc("config/company").set(clone(F.data));F.dirty=false;toast("Tetapan disimpan");render()}catch(e){handleWriteErr(e)}return}
   const err=validate(F);if(err){toast(err);return}
   if(F.kind==="job"&&F.isNew&&S.jobs.some(j=>j.no===F.data.no))F.data.no=nextNo("JOB",S.jobs);
   if(!F.isNew&&(F.kind==="job"||F.kind==="invoice"))F.data.log=(F.data.log||[]).concat(logEntry("Butiran dikemas kini"));
@@ -754,7 +765,7 @@ async function commit(col,patch,msg){
 }
 ACT.jobst=async d=>{
   const from=JOB_ST[form.data.status][0],to=JOB_ST[d.k][0];
-  if(d.k==="cancelled"){return modal("Batalkan rekod kerja?",`<p>${esc(form.data.no)} akan ditanda Dibatalkan. Anda boleh tetapkan semula ke Draf kemudian.</p>`,"Batalkan",async()=>{await commit("jobs",{status:d.k},`Status: ${from} → ${to}`);toast("Kerja dibatalkan")},true)}
+  if(d.k==="cancelled"){return modal("Batalkan Rekod Kerja?",`<p>${esc(form.data.no)} akan ditanda Dibatalkan. Anda boleh tetapkan semula ke Draf kemudian.</p>`,"Batalkan",async()=>{await commit("jobs",{status:d.k},`Status: ${from} → ${to}`);toast("Kerja dibatalkan")},true)}
   const patch={status:d.k};if(d.k==="done"&&!form.data.endDate)patch.endDate=todayISO();
   try{await commit("jobs",patch,`Status: ${from} → ${to}`);toast(to)}catch(e){}
 };
@@ -768,7 +779,7 @@ ACT.mkinv=async()=>{
     const t=[D.timeFrom,D.timeTo].filter(Boolean).map(fmt12).join(" - ");
     inv.lines.push({type:"note",desc:[load?"Load : "+load:"",t?"Time : "+t:"",D.receiver&&D.receiver.name?"Pic : "+D.receiver.name:""].filter(Boolean).join("\n")})}
   const doIt=async()=>{try{await save("invoices",id,inv);const jd=clone(j);jd.log=(jd.log||[]).concat(logEntry("Invois draf dicipta"));await save("jobs",form.id,jd);go("invois",id);toast("Invois draf dicipta")}catch(e){}};
-  if(already)modal("Kerja ini sudah ada invois",`<p>${already} invois aktif sudah dicipta untuk ${esc(j.no)}. Cipta invois lain (cth. untuk bil bulanan atau bil tambahan)?</p>`,"Cipta juga",doIt);else doIt();
+  if(already)modal("Kerja Ini Sudah Ada Invois",`<p>${already} invois aktif sudah dicipta untuk ${esc(j.no)}. Cipta invois lain (cth. untuk bil bulanan atau bil tambahan)?</p>`,"Cipta Juga",doIt);else doIt();
 };
 ACT.post=async()=>{
   const err=validate(form);if(err){toast(err);return}
@@ -778,7 +789,7 @@ ACT.post=async()=>{
 };
 ACT.invst=async d=>{
   const go2=async()=>{try{await commit("invoices",{status:d.k},`Status: ${INV_ST[form.data.status][0]} → ${INV_ST[d.k][0]}`)}catch(e){}};
-  if(d.k==="cancelled")modal("Batalkan invois?",`<p>${esc(form.data.no)} akan ditanda Dibatalkan dan tidak dikira dalam baki tertunggak.</p>`,"Batalkan invois",go2,true);
+  if(d.k==="cancelled")modal("Batalkan Invois?",`<p>${esc(form.data.no)} akan ditanda Dibatalkan dan tidak dikira dalam baki tertunggak.</p>`,"Batalkan invois",go2,true);
   else if(d.k==="draft"&&(form.data.payments||[]).length)toast("Buang bayaran yang didaftarkan dahulu sebelum tetap semula ke Draf.");
   else go2();
 };
@@ -797,7 +808,7 @@ ACT.pay=()=>{
     try{await commit("invoices",{payments:(form.data.payments||[]).concat(p)},`Bayaran ${RM(p.amount)} diterima (${p.method}${p.ref?", "+p.ref:""})`);toast("Bayaran didaftarkan")}catch(e){}
   });
 };
-ACT.delpay=d=>{const p=form.data.payments[+d.i];modal("Buang bayaran?",`<p>Bayaran ${RM(p.amount)} pada ${dmy(p.date)} akan dibuang daripada invois ini.</p>`,"Buang",async()=>{const ps=form.data.payments.slice();ps.splice(+d.i,1);try{await commit("invoices",{payments:ps},`Bayaran ${RM(p.amount)} dibuang`)}catch(e){}},true)};
+ACT.delpay=d=>{const p=form.data.payments[+d.i];modal("Buang Bayaran?",`<p>Bayaran ${RM(p.amount)} pada ${dmy(p.date)} akan dibuang daripada invois ini.</p>`,"Buang",async()=>{const ps=form.data.payments.slice();ps.splice(+d.i,1);try{await commit("invoices",{payments:ps},`Bayaran ${RM(p.amount)} dibuang`)}catch(e){}},true)};
 ACT.note=async()=>{
   const el=$("#note");if(!el)return;const v=el.value.trim();if(!v)return;if(!S.canWrite){toast("Anda hanya boleh melihat.");return}
   const col=COLMAP[form.kind];const log=(byId(col,form.id)||form.data).log||[];
@@ -918,7 +929,7 @@ function readDriverId(){try{return localStorage.getItem("aqs-driver")||""}catch(
 function writeDriverId(v){try{v?localStorage.setItem("aqs-driver",v):localStorage.removeItem("aqs-driver")}catch(e){}}
 const staffName=email=>{if(!email)return"";const x=S.staff.find(y=>String(y.email).toLowerCase()===String(email).toLowerCase());return x?(x.name||x.email):email};
 async function loadStaff(){if(!S.sb)return;let res=await S.sb.from("staff").select("email,name,role");if(res.error)res=await S.sb.from("staff").select("email,name");S.staff=(res.data||[]).map(x=>Object.assign({role:"admin"},x));S.me=S.staff.find(x=>String(x.email).toLowerCase()===String(S.userName||"").toLowerCase())||null;S.isDriver=!!(S.me&&S.me.role==="driver")}
-ACT.staffadd=()=>modal("Tambah akaun log masuk",`<div class="fld"><label for="s-name">Nama</label><input id="s-name" placeholder="cth. Pemandu AQS"></div><div class="fld"><label for="s-email">E-mel log masuk</label><input id="s-email" type="email" placeholder="cth. pemandu@aqssupply.com"></div><div class="fld"><label for="s-role">Peranan</label><select id="s-role"><option value="driver">Pemandu bersama (tugasan &amp; DO sahaja)</option><option value="admin">Admin (semua)</option></select></div><p style="color:var(--muted);font-size:13px">Selepas ini, cipta akaun log masuk untuk e-mel yang sama di Supabase → Authentication → Users.</p>`,"Tambah",async()=>{
+ACT.staffadd=()=>modal("Tambah Akaun Log Masuk",`<div class="fld"><label for="s-name">Nama</label><input id="s-name" placeholder="cth. Pemandu AQS"></div><div class="fld"><label for="s-email">E-mel Log Masuk</label><input id="s-email" type="email" placeholder="cth. pemandu@aqssupply.com"></div><div class="fld"><label for="s-role">Peranan</label><select id="s-role"><option value="driver">Pemandu bersama (tugasan &amp; DO sahaja)</option><option value="admin">Admin (semua)</option></select></div><p style="color:var(--muted);font-size:13px">Selepas ini, cipta akaun log masuk untuk e-mel yang sama di Supabase → Authentication → Users.</p>`,"Tambah",async()=>{
   const email=$("#s-email").value.trim().toLowerCase(),name=$("#s-name").value.trim(),role=$("#s-role").value;
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){toast("Masukkan e-mel yang sah.");return false}
   const{error}=await S.sb.from("staff").upsert({email,name,role});if(error){toast("Gagal menambah. Pastikan SQL 002 sudah dijalankan.");return false}
@@ -926,7 +937,7 @@ ACT.staffadd=()=>modal("Tambah akaun log masuk",`<div class="fld"><label for="s-
 async function saveDrivers(list){const C=clone(S.company);C.drivers=list;try{await S.db.doc("config/company").set(C);S.company=C;if(form&&form.kind==="company")form.data.drivers=clone(list);render();return true}catch(e){handleWriteErr(e);return false}}
 function driverModal(x){
   x=x||{};
-  modal(x.id?"Ubah pemandu":"Tambah pemandu",`<div class="fld"><label for="dv-name">Nama</label><input id="dv-name" value="${esc(x.name||"")}" placeholder="cth. SUHAIMI"></div><div class="fld"><label for="dv-phone">Telefon</label><input id="dv-phone" type="tel" value="${esc(x.phone||"")}" placeholder="cth. 011-5925 5852"></div><div class="fld"><label for="dv-plate">No. Lori</label><input id="dv-plate" value="${esc(x.plate||"")}" placeholder="cth. VBE 6317"></div><div class="fld"><label for="dv-email">Akaun log masuk</label><input id="dv-email" type="email" value="${esc(x.email||"")}" placeholder="cth. vbe6317@aqssupply.com"></div><p style="color:var(--muted);font-size:13px;margin:6px 0 0">Kosongkan akaun log masuk jika pemandu guna akaun bersama.</p>`,x.id?"Simpan":"Tambah",async()=>{
+  modal(x.id?"Ubah Pemandu":"Tambah Pemandu",`<div class="fld"><label for="dv-name">Nama</label><input id="dv-name" value="${esc(x.name||"")}" placeholder="cth. SUHAIMI"></div><div class="fld"><label for="dv-phone">Telefon</label><input id="dv-phone" type="tel" value="${esc(x.phone||"")}" placeholder="cth. 011-5925 5852"></div><div class="fld"><label for="dv-plate">No. Lori</label><input id="dv-plate" value="${esc(x.plate||"")}" placeholder="cth. VBE 6317"></div><div class="fld"><label for="dv-email">Akaun Log Masuk</label><input id="dv-email" type="email" value="${esc(x.email||"")}" placeholder="cth. vbe6317@aqssupply.com"></div><p style="color:var(--muted);font-size:13px;margin:6px 0 0">Kosongkan akaun log masuk jika pemandu guna akaun bersama.</p>`,x.id?"Simpan":"Tambah",async()=>{
     const name=$("#dv-name").value.trim().toUpperCase(),phone=$("#dv-phone").value.trim(),plate=$("#dv-plate").value.trim().toUpperCase(),email=$("#dv-email").value.trim().toLowerCase();
     if(!name){toast("Isi nama pemandu.");return false}
     if(email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){toast("E-mel akaun tidak sah.");return false}
@@ -940,7 +951,7 @@ function driverModal(x){
 }
 ACT.drvadd=()=>driverModal();
 ACT.drvedit=d=>driverModal(drivers().find(y=>y.id===d.id));
-ACT.drvdel=d=>{const x=drivers().find(y=>y.id===d.id)||{};modal("Buang pemandu "+(x.name||"")+"?",`<p>Job lama dan DO yang sudah ditandatangani tidak terjejas.${x.email?" Akaun "+esc(x.email)+" tidak lagi boleh melihat data sistem.":""}</p>`,"Buang",async()=>{if(x.email){await S.sb.from("staff").delete().eq("email",String(x.email).toLowerCase()).eq("role","driver")}const ok=await saveDrivers(drivers().filter(y=>y.id!==d.id));if(!ok)return false;await loadStaff();render()},true)};
+ACT.drvdel=d=>{const x=drivers().find(y=>y.id===d.id)||{};modal("Buang Pemandu "+(x.name||"")+"?",`<p>Job lama dan DO yang sudah ditandatangani tidak terjejas.${x.email?" Akaun "+esc(x.email)+" tidak lagi boleh melihat data sistem.":""}</p>`,"Buang",async()=>{if(x.email){await S.sb.from("staff").delete().eq("email",String(x.email).toLowerCase()).eq("role","driver")}const ok=await saveDrivers(drivers().filter(y=>y.id!==d.id));if(!ok)return false;await loadStaff();render()},true)};
 ACT.staffdel=d=>modal("Buang "+d.email+"?","<p>Orang ini tidak lagi boleh melihat atau mengubah data sistem.</p>","Buang",async()=>{const{error}=await S.sb.from("staff").delete().eq("email",d.email);if(error){toast("Gagal membuang.");return false}await loadStaff();render()},true);
 
 /* ---------- time helpers ---------- */
@@ -954,7 +965,7 @@ VIEWS.tugasan=()=>{
   if(S.isDriver&&!driverName(curDriverId())){
     const ds=drivers().filter(x=>!x.email);
     return{cp:crumb([["Siapa anda?"]]),main:ds.length?`<p style="margin:0 0 12px;color:var(--muted)">Pilih nama anda. Telefon ini akan ingat pilihan anda.</p><div class="drvpick">${ds.map(x=>`<button class="btn" data-act="pickdrv" data-id="${esc(x.id)}"><b>${esc(x.name)}</b>${x.phone?`<span>${esc(x.phone)}</span>`:""}</button>`).join("")}</div>`
-      :emptyBox("Belum ada nama pemandu","Akaun ini tidak dipautkan kepada mana-mana pemandu. Minta admin isi Akaun log masuk untuk pemandu anda di Tetapan → Pemandu, atau tambah pemandu yang guna akaun bersama.")};
+      :emptyBox("Belum Ada Nama Pemandu","Akaun ini tidak dipautkan kepada mana-mana pemandu. Minta admin isi Akaun log masuk untuk pemandu anda di Tetapan → Pemandu, atau tambah pemandu yang guna akaun bersama.")};
   }
   const mine=S.jobs.filter(j=>!S.isDriver||(j.driverId?j.driverId===curDriverId():String(j.driverEmail||"").toLowerCase()===me));
   const act=mine.filter(j=>j.status==="confirmed"||j.status==="ongoing").sort((a,b)=>(a.startDate||"").localeCompare(b.startDate||""));
@@ -962,10 +973,10 @@ VIEWS.tugasan=()=>{
   const card=j=>`<article class="tcard"><div class="th"><span class="mono">${esc(j.no)}</span>${pill(JOB_ST[j.status]||JOB_ST.draft)}</div>
     <h3>${esc(custName(j.customerId))}</h3><dl>${dlRow("Tarikh",dmy(j.startDate)+(j.time?" · "+j.time:""))}${dlRow("Projek",j.site)}${dlRow("Pickup",j.pickup)}${dlRow("Dropoff",j.dropoff)}${dlRow("Kenderaan",j.vehicle)}${dlRow("SV Tapak",j.supervisor)}${dlRow("Kerja",jobItems(j))}${dlRow("Load",j.load)}${j.notes?dlRow("Catatan",j.notes):""}</dl>
     <div class="tact">${j.status==="confirmed"?`<button class="btn pri" data-act="accept" data-id="${j.id}">Terima Job</button>`:""}${j.status==="ongoing"&&!(j.do&&j.do.status==="signed")?`<button class="btn pri" data-act="dofill" data-id="${j.id}">Isi DO &amp; Tandatangan</button>`:""}${j.do&&j.do.status==="signed"?`<button class="btn" data-act="doprint" data-id="${j.id}">Lihat DO ${esc(j.do.no)}</button>`:""}</div></article>`;
-  const cp=crumb([["Tugasan Saya"]])+(S.isDriver?`<div class="right"><span style="font-weight:600">${esc(driverName(curDriverId()))}${(()=>{const x=drivers().find(y=>y.id===curDriverId());return x&&x.plate?" · "+esc(x.plate):""})()}</span>${boundDriver()?"":`<button class="btn sm" data-act="switchdrv">Tukar pemandu</button>`}</div>`:"");
-  let main=`<h2 class="sec">Job aktif</h2>`;
-  main+=act.length?`<div class="tgrid">${act.map(card).join("")}</div>`:emptyBox("Tiada job buat masa ini","Job yang admin tetapkan kepada anda akan muncul di sini. Tarik ke bawah atau muat semula untuk semak.");
-  if(done.length)main+=`<h2 class="sec" style="margin-top:20px">DO terkini</h2><div class="tgrid">${done.map(card).join("")}</div>`;
+  const cp=crumb([["Tugasan Saya"]])+(S.isDriver?`<div class="right"><span style="font-weight:600">${esc(driverName(curDriverId()))}${(()=>{const x=drivers().find(y=>y.id===curDriverId());return x&&x.plate?" · "+esc(x.plate):""})()}</span>${boundDriver()?"":`<button class="btn sm" data-act="switchdrv">Tukar Pemandu</button>`}</div>`:"");
+  let main=`<h2 class="sec">Job Aktif</h2>`;
+  main+=act.length?`<div class="tgrid">${act.map(card).join("")}</div>`:emptyBox("Tiada Job Buat Masa Ini","Job yang admin tetapkan kepada anda akan muncul di sini. Tarik ke bawah atau muat semula untuk semak.");
+  if(done.length)main+=`<h2 class="sec" style="margin-top:20px">DO Terkini</h2><div class="tgrid">${done.map(card).join("")}</div>`;
   return{cp,main};
 };
 ACT.pickdrv=d=>{S.driverId=d.id;writeDriverId(d.id);render();toast("Hai, "+driverName(d.id))};
@@ -1002,9 +1013,9 @@ ACT.dofill=d=>{
    <div class="dotop"><button class="btn" data-act="doclose">← Kembali</button><b>Delivery Order</b><span class="mono">${esc(j.no)}</span></div>
    <section class="dobox"><div class="dohead"><div><small>M/S</small><b>${esc(custName(j.customerId))}</b></div><div><small>D.O. No</small><b class="mono">${esc(nextDoNo())}</b></div></div>
     <div class="dof two">${f("date","Tarikh","date")}${f("lorryReg","Lorry Reg No","text","cth. VBE 6317")}</div><div class="dof">${f("customerPo","Customer PO No.","text","jika ada")}</div></section>
-   <section class="dobox"><h3>Barang / Kerja</h3><div id="do-items">${doItemsHTML()}</div><button class="addline" data-act="doadditem">+ Tambah barang</button></section>
-   <section class="dobox dof"><div class="two">${f("timeFrom","Masa mula","time")}${f("timeTo","Masa tamat","time")}</div>${f("from","From","text","Lokasi ambil")}${f("to","Delivery To","text","Lokasi hantar")}</section>
-   <section class="dobox dof"><h3>Penerima (PIC tapak)</h3><p class="donote">Saya mengesahkan semua barang/kerja diterima dalam keadaan baik dan sempurna.</p>${f("rname","Nama","text","Nama penuh PIC")}${f("ric","No. I/C","text","cth. 850101-10-1234")}
+   <section class="dobox"><h3>Barang / Kerja</h3><div id="do-items">${doItemsHTML()}</div><button class="addline" data-act="doadditem">+ Tambah Barang</button></section>
+   <section class="dobox dof"><div class="two">${f("timeFrom","Masa Mula","time")}${f("timeTo","Masa Tamat","time")}</div>${f("from","From","text","Lokasi ambil")}${f("to","Delivery To","text","Lokasi hantar")}</section>
+   <section class="dobox dof"><h3>Penerima (PIC Tapak)</h3><p class="donote">Saya mengesahkan semua barang/kerja diterima dalam keadaan baik dan sempurna.</p>${f("rname","Nama","text","Nama penuh PIC")}${f("ric","No. I/C","text","cth. 850101-10-1234")}
     <label>Tandatangan PIC</label><canvas class="sig" id="sig-r" aria-label="Kotak tandatangan PIC"></canvas><div class="sigbar"><span>Tandatangan dengan jari dalam kotak</span><button class="btn sm" data-act="sigclear" data-k="r">Padam</button></div></section>
    <section class="dobox dof"><h3>Dikeluarkan oleh (Pemandu)</h3>${f("iname","Nama","text","Nama pemandu")}
     <label>Tandatangan Pemandu</label><canvas class="sig" id="sig-i" aria-label="Kotak tandatangan pemandu"></canvas><div class="sigbar"><span>Tandatangan dengan jari dalam kotak</span><button class="btn sm" data-act="sigclear" data-k="i">Padam</button></div></section>
@@ -1055,9 +1066,9 @@ VIEWS.do=()=>{
   const cp=crumb([["Delivery Order"]])+`<div class="right">${searchBox("do","Cari no. DO, pelanggan, penerima…")}</div>`;
   let main="";
   if(pending.length)main+=`<h2 class="sec">Menunggu DO (${pending.length})</h2><div class="tbl-wrap" style="margin-bottom:18px"><table><thead><tr><th>Rekod Kerja</th><th>Pelanggan</th><th>Tarikh</th><th>Pemandu</th><th>Status</th><th></th></tr></thead><tbody>${pending.map(j=>`<tr class="click" data-act="open" data-v="kerja" data-id="${j.id}"><td class="mono">${esc(j.no)}</td><td>${esc(custName(j.customerId))}</td><td class="num">${dmy(j.startDate)}</td><td>${esc(jobDriverName(j)||"—")}</td><td>${pill(JOB_ST[j.status])}</td><td class="r"><button class="btn sm" data-act="dofill" data-id="${j.id}">Isi DO</button></td></tr>`).join("")}</tbody></table></div>`;
-  main+=`<h2 class="sec">DO ditandatangani</h2>`;
+  main+=`<h2 class="sec">DO Ditandatangani</h2>`;
   main+=rows.length?`<div class="tbl-wrap"><table><thead><tr><th>No. DO</th><th>Tarikh</th><th>Pelanggan</th><th>Rekod Kerja</th><th>Lori</th><th>Penerima</th><th>Invois</th><th></th></tr></thead><tbody>${rows.map(j=>{const inv=S.invoices.find(i=>i.jobId===j.id&&i.status!=="cancelled");return `<tr class="click" data-act="open" data-v="kerja" data-id="${j.id}"><td class="mono">${esc(j.do.no)}</td><td class="num">${dmy(j.do.date)}</td><td>${esc(custName(j.customerId))}</td><td class="mono">${esc(j.no)}</td><td class="mono">${esc(j.do.lorryReg||"—")}</td><td>${esc(j.do.receiver&&j.do.receiver.name||"—")}</td><td>${inv?invPill(inv):`<span class="pill p-amber">Belum</span>`}</td><td class="r"><button class="btn sm" data-act="doprint" data-id="${j.id}">Cetak</button></td></tr>`}).join("")}</tbody></table></div>`
-   :emptyBox("Belum ada DO digital","Bila pemandu atau admin menghantar DO yang ditandatangani PIC tapak, ia akan disenaraikan di sini.");
+   :emptyBox("Belum Ada DO Digital","Bila pemandu atau admin menghantar DO yang ditandatangani PIC tapak, ia akan disenaraikan di sini.");
   return{cp,main};
 };
 
@@ -1077,23 +1088,21 @@ function printHTML(html){const w=window.open("","_blank");if(!w){toast("Benarkan
 function invoicePage(v){
   const C=S.company,cu=byId("customers",v.customerId)||{},c=invCalc(v);
   const money=x=>"RM "+rmFmt.format(n(x));const br=t=>esc(t||"").replace(/\n/g,"<br>");
-  const title=v.status==="draft"?"Draft Invoice":v.status==="cancelled"?"Cancelled Invoice":"Invoice "+esc(v.no);
-  const rows=(v.lines||[]).map(l=>l.type==="note"?`<tr class="note"><td colspan="4">${br(l.desc)}</td></tr>`:
-    `<tr><td>${br(l.desc||(byId("assets",l.assetId)||{}).name||"")}</td><td class="r">${rmFmt.format(n(l.qty)*n(l.dur))}</td><td class="r">${rmFmt.format(n(l.rate))}</td><td class="r">${money(lineTotal(l))}</td></tr>`).join("");
-  const pays=(v.payments||[]).map(p=>`<tr><td class="paid">Paid on ${dmy(p.date)}</td><td class="r paid">${money(p.amount)}</td></tr>`).join("");
+  const title=v.status==="draft"?"DRAFT INVOICE":v.status==="cancelled"?"CANCELLED INVOICE":"INVOICE";
+  let k=0;
+  const rows=(v.lines||[]).map(l=>l.type==="note"?`<tr class="note"><td></td><td>${br(l.desc)}</td><td></td><td></td><td></td></tr>`:
+    `<tr><td class="c">${++k}.</td><td>${br(l.desc||(byId("assets",l.assetId)||{}).name||"")}</td><td class="c">${rmFmt.format(n(l.qty)*n(l.dur))}</td><td class="r">${rmFmt.format(n(l.rate))}</td><td class="r">${rmFmt.format(lineTotal(l))}</td></tr>`).join("")
+    +Array.from({length:Math.max(0,3-(v.lines||[]).length)},()=>`<tr class="blank"><td></td><td></td><td></td><td></td><td></td></tr>`).join("");
+  const pays=(v.payments||[]).map(p=>`<tr><td class="paid">Paid on ${dmy(p.date)}</td><td class="r paid">− ${money(p.amount)}</td></tr>`).join("");
   const termsDays=v.date&&v.dueDate?Math.round((new Date(v.dueDate)-new Date(v.date))/864e5):null;
   return `<div class="page invpage">
-<div class="band">
-  <div class="logo"><img src="${esc(C.logo||LOGO_DATA||DEFAULT_LOGO)}" alt=""></div>
-  <div class="co">${esc(C.name||"AQS Supply Enterprise")}${C.regNo?" ("+esc(C.regNo)+")":""}<br>${br(C.address)}${C.phone?"<br>Call &amp; WhatsApp : "+esc(C.phone):""}${C.email?"<br>Email : "+esc(C.email):""}${C.sstNo?"<br>SST No : "+esc(C.sstNo):""}</div>
-  <h1>${title}</h1>
-</div>
-<div class="cust">${esc(cu.name||"")}<br>${br(cu.address)}${cu.regNo?"<br>Tax ID: "+esc(cu.regNo):""}</div>
-<div class="meta"><div><b>Invoice Date</b>${dmy(v.date)}</div><div><b>Due Date</b>${dmy(v.dueDate)}</div>${v.ref?`<div><b>Reference</b>${esc(v.ref)}</div>`:"<div></div>"}</div>
-<table class="l"><thead><tr><th>Description</th><th class="r">Quantity</th><th class="r">Unit Price</th><th class="r">Amount</th></tr></thead><tbody>${rows}</tbody></table>
-${termsDays!=null?`<div class="terms">Payment terms: ${termsDays} Days</div>`:""}
-<div class="sum"><div class="pay">${v.no?`Payment Communication: <b>${esc(v.no)}</b><br>`:""}${C.bankAcc?`on this account: <b>${esc(C.bankHolder||C.name||"")} ${esc(C.bankAcc)}${C.bank?" ("+esc(C.bank)+")":""}</b>`:""}${v.notes&&v.notes!==C.footer?`<div style="margin-top:4mm;white-space:pre-line">${esc(v.notes)}</div>`:""}</div>
-<table class="t">${c.tax>0?`<tr><td>Untaxed Amount</td><td class="r">${money(c.sub)}</td></tr><tr><td>SST ${n(v.taxRate)}%</td><td class="r">${money(c.tax)}</td></tr>`:""}<tr class="tot"><td>Total</td><td class="r">${money(c.total)}</td></tr>${pays}${c.paid>0?`<tr class="due"><td>Amount Due</td><td class="r">${money(c.due)}</td></tr>`:""}</table></div>
+<div class="hd"><img src="${esc(C.logo||LOGO_DATA||DEFAULT_LOGO)}" alt=""><div class="co"><b>${esc(C.name||"AQS Supply Enterprise")}${C.regNo?" ("+esc(C.regNo)+")":""}</b><span>${br(C.address)}</span><span class="ct">${C.phone?`H/P : ${esc(C.phone)}`:""}${C.phone&&C.email?`<i>|</i>`:""}${C.email?`Email : ${esc(C.email)}`:""}${C.sstNo?`<i>|</i>SST No : ${esc(C.sstNo)}`:""}</span></div><span class="sp"></span></div>
+<h1>${title}</h1>
+<div class="meta"><div class="ms"><span>BILL TO :</span><div class="v">${esc(cu.name||"")}${cu.address?"<br>"+br(cu.address):""}${cu.regNo?`<br><small>TAX ID : ${esc(cu.regNo)}</small>`:""}</div></div>
+<table class="rt"><tr><td>INVOICE NO</td><td>:</td><td class="no">${esc(v.no||"—")}</td></tr><tr><td>DATE</td><td>:</td><td>${dmy(v.date)}</td></tr><tr><td>DUE DATE</td><td>:</td><td>${dmy(v.dueDate)}</td></tr>${v.ref?`<tr><td>REFERENCE</td><td>:</td><td>${esc(v.ref)}</td></tr>`:""}${termsDays!=null?`<tr><td>PAYMENT TERMS</td><td>:</td><td>${termsDays} DAYS</td></tr>`:""}</table></div>
+<table class="it"><thead><tr><th style="width:12mm">NO.</th><th>DESCRIPTION</th><th style="width:16mm">QTY</th><th style="width:33mm">UNIT PRICE (RM)</th><th style="width:31mm">AMOUNT (RM)</th></tr></thead><tbody>${rows}</tbody></table>
+<div class="sum"><div class="pay">${C.bankAcc?`<b class="h">PAYMENT DETAILS</b><div class="kv"><span>Bank</span><span>:</span><span>${esc(C.bank||"")}</span><span>Account Name</span><span>:</span><span>${esc(C.bankHolder||C.name||"")}</span><span>Account No</span><span>:</span><span><b>${esc(C.bankAcc)}</b></span>${v.no?`<span>Reference</span><span>:</span><span><b>${esc(v.no)}</b></span>`:""}</div>`:""}${v.notes&&v.notes!==C.footer?`<div class="nt">${br(v.notes)}</div>`:""}</div>
+<table class="t">${c.tax>0?`<tr><td>Subtotal</td><td class="r">${money(c.sub)}</td></tr><tr><td>SST ${n(v.taxRate)}%</td><td class="r">${money(c.tax)}</td></tr>`:""}<tr class="tot"><td>TOTAL</td><td class="r">${money(c.total)}</td></tr>${pays}${c.paid>0?`<tr class="due"><td>AMOUNT DUE</td><td class="r">${money(c.due)}</td></tr>`:""}</table></div>
 <div class="foot"><span>${esc(C.footer||"This is computer generated invoice no signature required.")}</span><span>Page 1 / 1</span></div>
 </div>`;
 }
@@ -1124,42 +1133,37 @@ function doPage(j){
 <div class="foot">Digitally signed delivery order · ${esc(j.no)}</div>
 </div>`;
 }
-const INV_CSS=`@page{size:A4;margin:0}
-*{box-sizing:border-box}
-html,body{margin:0;background:#e9ebee}
-body{font-family:Roboto,Arial,Helvetica,sans-serif;color:#222;font-size:12.5px;line-height:1.45;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.page.invpage{width:210mm;min-height:297mm;margin:10mm auto;background:#fff;position:relative;padding:0 12mm 24mm;display:flex;flex-direction:column}
-.invpage .band{position:relative;margin:0 -12mm;height:50mm;padding:11mm 12mm 0}
-.invpage .band::before{content:"";position:absolute;inset:0;background:#f9eaea;clip-path:polygon(0 0,100% 0,100% 72%,63% 72%,57% 100%,0 100%);z-index:0}
-.invpage .logo{position:absolute;z-index:1;left:12mm;top:7mm;width:42mm;height:42mm;display:flex;align-items:center;justify-content:center}
-.invpage .logo img{max-width:100%;max-height:100%}
-.invpage .co{position:absolute;z-index:1;right:12mm;top:9mm;text-align:right;font-size:12.5px;line-height:1.45}
-.invpage h1{position:absolute;z-index:1;right:12mm;top:39mm;line-height:1.2;margin:0;font-weight:400;font-size:27px;color:#b3262e}
-.invpage .cust{margin-top:6mm;font-size:13px}
-.invpage .meta{display:grid;grid-template-columns:1fr 1fr 1fr;margin-top:10mm}
-.invpage .meta b{display:block;font-weight:700;font-size:13px}
-.invpage table.l{width:100%;border-collapse:collapse;margin-top:8mm}
-.invpage table.l th{font-weight:400;text-align:left;padding:6px 8px;border-bottom:1px solid #444}
-.invpage table.l td{padding:8px;vertical-align:top}
-.invpage table.l tbody tr:nth-child(odd) td{background:#f2f3f5}
-.invpage table.l tbody tr{border-bottom:1px solid #e2e4e8}
-.invpage table.l tr.note td{font-style:italic}
-.invpage .r{text-align:right;white-space:nowrap}
-.invpage .terms{margin-top:5mm}
-.invpage .sum{display:flex;justify-content:space-between;align-items:flex-start;margin-top:4mm;gap:10mm}
-.invpage .pay{margin-top:9mm}
-.invpage table.t{border-collapse:collapse;min-width:72mm}
-.invpage table.t td{padding:7px 10px}
-.invpage table.t .tot td{background:#f2f3f5;color:#b3262e;font-weight:700}
-.invpage table.t .due td{font-weight:700;border-top:1px solid #444}
-.invpage .paid{font-style:italic}
-.invpage .foot{position:absolute;left:12mm;right:12mm;bottom:12mm;border-top:1px solid #222;padding-top:6px;display:flex;justify-content:space-between;font-size:12px}
+const INV_CSS=`.page.invpage{width:210mm;min-height:297mm;margin:10mm auto;background:#fff;padding:9mm 14mm 8mm;position:relative;color:#1d1d1f;font-size:12.5px;line-height:1.45}
+.invpage .hd{display:grid;grid-template-columns:32mm minmax(0,1fr) 32mm;align-items:center;gap:4mm;margin-bottom:4mm}
+.invpage .hd img{width:32mm;height:32mm;object-fit:contain}
+.invpage .co{text-align:center;font-size:12.5px;line-height:1.45;display:flex;flex-direction:column;gap:1mm}
+.invpage .co b{font-size:15px;letter-spacing:.02em;text-transform:uppercase}.invpage .co span{text-transform:uppercase}
+.invpage .co .ct{text-transform:none;font-size:12px;margin-top:1mm}.invpage .co .ct i{font-style:normal;color:#999;margin:0 3mm}
+.invpage h1{text-align:center;font-size:18px;margin:0 0 4mm;text-decoration:underline;letter-spacing:.04em}
+.invpage .meta{display:grid;grid-template-columns:1.1fr 1fr;gap:8mm;margin-bottom:4mm}
+.invpage .ms{display:flex;gap:3mm}.invpage .ms>span{white-space:nowrap}
+.invpage .ms .v{flex:1;font-size:13.5px;color:#0d2f7a;line-height:1.6;text-transform:uppercase}.invpage .ms .v small{font-size:12px;color:#333}
+.invpage .rt td{padding:1.2mm 2mm;font-size:12.5px;white-space:nowrap}.invpage .rt td:last-child{color:#0d2f7a;font-size:13.5px}
+.invpage .rt td.no{color:#c41e1e;font-size:20px;font-weight:700}
+.invpage table.it{width:100%;border-collapse:collapse;border:1.5px solid #222}
+.invpage table.it th{border:1.5px solid #222;padding:2mm;font-weight:500;font-size:12px;white-space:nowrap}
+.invpage table.it td{border-left:1.5px solid #222;border-right:1.5px solid #222;padding:2mm 3mm;vertical-align:top;color:#0d2f7a;font-size:13px}
+.invpage table.it tr.note td{font-style:italic;color:#333;font-size:12.5px;padding-top:1mm}
+.invpage table.it tr.blank td{height:7mm}
+.invpage .c{text-align:center}.invpage .r{text-align:right;white-space:nowrap}
+.invpage .sum{display:flex;justify-content:space-between;align-items:flex-start;gap:10mm;margin-top:5mm}
+.invpage .pay{font-size:12.5px;flex:1}.invpage .pay .h{display:block;font-size:12px;letter-spacing:.04em;margin-bottom:1.5mm}
+.invpage .pay .kv{display:grid;grid-template-columns:28mm 3mm minmax(0,1fr);gap:.8mm 1mm}
+.invpage .pay .nt{margin-top:4mm;white-space:pre-line}
+.invpage table.t{border-collapse:collapse;min-width:70mm;border:1.5px solid #222}
+.invpage table.t td{padding:2mm 3mm;font-size:13px}
+.invpage table.t .tot td{font-weight:700;font-size:14.5px;color:#c41e1e;border-top:1.5px solid #222}
+.invpage table.t tr:first-child td{border-top:0}
+.invpage table.t .due td{font-weight:700;border-top:1.5px solid #222}
+.invpage .paid{font-style:italic;color:#444}
+.invpage .foot{position:absolute;left:14mm;right:14mm;bottom:8mm;border-top:1px solid #222;padding-top:5px;display:flex;justify-content:space-between;font-size:11.5px}
 .invpage .foot span:last-child{color:#666}
-@media print{html,body{background:#fff}
-.page.invpage{margin:0!important}}
-.tb{position:sticky;top:0;z-index:5;text-align:center;padding:8px;background:#e9ebee}
-.tb button{font:inherit;font-size:15px;padding:10px 18px;border-radius:6px;border:0;background:#1d5a6e;color:#fff;font-weight:600;cursor:pointer}
-@media print{.tb{display:none}}`;
+@media print{.page.invpage{margin:0!important}}`;
 const DO_CSS=`@page{size:A4;margin:0}
 *{box-sizing:border-box}
 html,body{margin:0;background:#e9ebee}
@@ -1172,7 +1176,7 @@ body{font-family:Roboto,Arial,Helvetica,sans-serif;color:#1d1d1f;font-size:12.5p
 .dopage h1{text-align:center;font-size:18px;margin:0 0 4mm;text-decoration:underline;letter-spacing:.02em}
 .dopage .meta{display:grid;grid-template-columns:1.1fr 1fr;gap:8mm;margin-bottom:3mm}
 .dopage .ms{display:flex;gap:3mm}
-.dopage .ms .v{flex:1;min-height:16mm;font-size:14px;color:#0d2f7a;line-height:1.6}
+.dopage .ms .v{flex:1;min-height:16mm;text-transform:uppercase;font-size:14px;color:#0d2f7a;line-height:1.6}
 .dopage .rt td{padding:1.5mm 2mm;font-size:13px}
 .dopage .rt td:last-child{color:#0d2f7a;font-size:14px}
 .dopage .rt td.dono{color:#c41e1e;font-size:24px;font-weight:700}
@@ -1196,7 +1200,8 @@ body{font-family:Roboto,Arial,Helvetica,sans-serif;color:#1d1d1f;font-size:12.5p
 .page.dopage{margin:0!important}}
 .tb{position:sticky;top:0;z-index:5;text-align:center;padding:8px;background:#e9ebee}
 .tb button{font:inherit;font-size:15px;padding:10px 18px;border-radius:6px;border:0;background:#1d5a6e;color:#fff;font-weight:600;cursor:pointer}
-@media print{.tb{display:none}}`;
+@media print{.tb{display:none}}
+.dopage table.it td,.dopage table.dl td:last-child,.dopage .rt td:last-child,.dopage .sig .kv span:last-child{text-transform:uppercase}`;
 function docShell(title,css,pages){return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><script>(function(){var MM=96/25.4,PRINT_W=196,PRINT_H=232,MAXZ=0.93;function pages(){return Array.prototype.slice.call(document.querySelectorAll(".page"))}function fit(){if(document.documentElement.classList.contains("printing"))return;var ps=pages();if(!ps.length)return;ps.forEach(function(p){p.style.zoom="";p.style.margin=""});var w=document.documentElement.clientWidth,s=Math.min(1,(w-12)/ps[0].offsetWidth);if(s<1)ps.forEach(function(p){p.style.zoom=s;p.style.margin="6px auto"})}function prep(){var r=document.documentElement;r.classList.add("printing");pages().forEach(function(p){p.style.zoom="";p.style.margin="";var h=p.scrollHeight;var z=Math.min(MAXZ,(PRINT_H*MM)/h);p.style.zoom=String(Math.max(0.5,z))})}function done(){document.documentElement.classList.remove("printing");pages().forEach(function(p){p.style.zoom=""});fit()}window.aqsPrint=function(){prep();setTimeout(function(){window.print()},60)};addEventListener("beforeprint",prep);addEventListener("afterprint",done);if(window.matchMedia){var mq=matchMedia("print");var h=function(e){e.matches?prep():done()};mq.addEventListener?mq.addEventListener("change",h):mq.addListener&&mq.addListener(h)}addEventListener("resize",fit);addEventListener("load",fit);document.addEventListener("DOMContentLoaded",fit);setTimeout(fit,300);setTimeout(fit,1000);})()<\/script><title>${esc(title)}</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap">
 <style>${css}.page+.page{margin-top:10mm}html.printing .page{width:196mm!important;min-height:0!important;height:auto!important;margin:0 auto!important}html.printing .page.invpage .foot{position:static!important;margin-top:14mm}html.printing .page.invpage{padding-bottom:0!important}@media print{html,body{height:auto!important;background:#fff!important}.page{width:196mm!important;min-height:0!important;height:auto!important;margin:0 auto!important;page-break-after:always;break-after:page;page-break-inside:avoid;break-inside:avoid;overflow:hidden}.page:last-of-type{page-break-after:auto!important;break-after:auto!important}.page.invpage .foot{position:static!important;margin-top:14mm}.page.invpage{padding-bottom:0!important}}</style></head><body><div class="tb"><button type="button" onclick="window.aqsPrint?aqsPrint():print()">Cetak / Simpan PDF</button></div>${pages}</body></html>`}
@@ -1215,7 +1220,7 @@ ACT.csv=async()=>{
 };
 
 /* ---------- sample data (marked "contoh") ---------- */
-ACT.seed=()=>modal("Muatkan data contoh?","<p>Beberapa pelanggan, aset, rekod kerja dan invois rekaan akan ditambah, semuanya bertanda <b>contoh</b>. Padam sekali gus di Tetapan bila sudah faham cara guna.</p>","Muatkan",async()=>{
+ACT.seed=()=>modal("Muatkan Data Contoh?","<p>Beberapa pelanggan, aset, rekod kerja dan invois rekaan akan ditambah, semuanya bertanda <b>contoh</b>. Padam sekali gus di Tetapan bila sudah faham cara guna.</p>","Muatkan",async()=>{
   try{
   const y=todayISO().slice(0,4),t=todayISO();
   const c1=newId("customers"),c2=newId("customers");
@@ -1233,7 +1238,7 @@ ACT.seed=()=>modal("Muatkan data contoh?","<p>Beberapa pelanggan, aset, rekod ke
   toast("Data contoh dimuatkan");
   }catch(e){}
 });
-ACT.unseed=()=>modal("Padam semua data contoh?","<p>Hanya rekod bertanda contoh dipadam. Rekod sebenar anda tidak disentuh.</p>","Padam data contoh",async()=>{
+ACT.unseed=()=>modal("Padam Semua Data Contoh?","<p>Hanya rekod bertanda contoh dipadam. Rekod sebenar anda tidak disentuh.</p>","Padam Data Contoh",async()=>{
   try{for(const c of COLS){for(const x of S[c].filter(x=>x.example))await remove(c,x.id)}toast("Data contoh dipadam")}catch(e){}
 },true);
 
@@ -1274,19 +1279,19 @@ const hv=location.hash.slice(1);if(NAV.some(x=>x[0]===hv))route.view=hv;
 const authHash=location.hash;const needPwd=/type=(invite|recovery)/.test(authHash);
 const CFG=window.AQS_CONFIG||{};
 if(!window.supabase||!CFG.SUPABASE_URL||/YOUR-PROJECT/.test(CFG.SUPABASE_URL)){
-  $("#main").innerHTML=emptyBox("Sistem belum disambungkan","Isi SUPABASE_URL dan SUPABASE_ANON_KEY dalam fail config.js, kemudian muat semula halaman.");
+  $("#main").innerHTML=emptyBox("Sistem Belum Disambungkan","Isi SUPABASE_URL dan SUPABASE_ANON_KEY dalam fail config.js, kemudian muat semula halaman.");
 }else{
 const sb=window.supabase.createClient(CFG.SUPABASE_URL,CFG.SUPABASE_ANON_KEY);
 ACT.logout=async()=>{writeDriverId("");await sb.auth.signOut();location.hash="";location.reload()};
 function loginView(mode,msg){
   $("#cp").innerHTML="";$("#nav").innerHTML="";$("#who").textContent="";
-  const titles={login:["Log masuk","Masukkan e-mel dan kata laluan staf AQS Supply."],forgot:["Tetapkan semula kata laluan","Kami akan hantar pautan ke e-mel anda."],setpwd:["Tetapkan kata laluan","Pilih kata laluan untuk akaun anda (sekurang-kurangnya 8 aksara)."]};
+  const titles={login:["Log Masuk","Masukkan e-mel dan kata laluan staf AQS Supply."],forgot:["Tetapkan Semula Kata Laluan","Kami akan hantar pautan ke e-mel anda."],setpwd:["Tetapkan Kata Laluan","Pilih kata laluan untuk akaun anda (sekurang-kurangnya 8 aksara)."]};
   const[h,p]=titles[mode];
   $("#main").innerHTML=`<form class="login" id="lf"><h1>${h}</h1><p>${p}</p>
    ${mode!=="setpwd"?`<label for="l-email">E-mel</label><input id="l-email" type="email" autocomplete="username" required>`:""}
-   ${mode!=="forgot"?`<label for="l-pwd">Kata laluan</label><input id="l-pwd" type="password" autocomplete="${mode==="setpwd"?"new-password":"current-password"}" minlength="${mode==="setpwd"?8:1}" required>`:""}
-   <button class="btn pri" type="submit">${mode==="login"?"Log masuk":mode==="forgot"?"Hantar pautan":"Simpan kata laluan"}</button>
-   ${mode==="login"?`<button type="button" class="lnk" id="l-forgot">Lupa kata laluan?</button>`:""}${mode==="forgot"?`<button type="button" class="lnk" id="l-back">Kembali ke log masuk</button>`:""}
+   ${mode!=="forgot"?`<label for="l-pwd">Kata Laluan</label><input id="l-pwd" type="password" autocomplete="${mode==="setpwd"?"new-password":"current-password"}" minlength="${mode==="setpwd"?8:1}" required>`:""}
+   <button class="btn pri" type="submit">${mode==="login"?"Log Masuk":mode==="forgot"?"Hantar Pautan":"Simpan Kata Laluan"}</button>
+   ${mode==="login"?`<button type="button" class="lnk" id="l-forgot">Lupa Kata Laluan?</button>`:""}${mode==="forgot"?`<button type="button" class="lnk" id="l-back">Kembali ke Log Masuk</button>`:""}
    <div class="err" id="l-err">${msg?esc(msg):""}</div></form>`;
   const f=$("#lf"),er=$("#l-err");
   const fg=$("#l-forgot");if(fg)fg.onclick=()=>loginView("forgot");const bk=$("#l-back");if(bk)bk.onclick=()=>loginView("login");
@@ -1304,12 +1309,12 @@ async function start(session){
   if(started)return;started=true;
   if(/access_token|type=/.test(location.hash))history.replaceState(null,"",location.pathname+(NAV.some(x=>x[0]===hv)?"#"+hv:""));
   S.uid=session.user.id;S.userName=session.user.email;
-  $("#who").innerHTML=`<span class="em">${esc(S.userName)}</span><button data-act="logout">Log keluar</button>`;
+  $("#who").innerHTML=`<span class="em">${esc(S.userName)}</span><button data-act="logout">Log Keluar</button>`;
   S.db=makeDB(sb);
   S.sb=sb;
   try{const{data,error}=await sb.rpc("is_staff");if(!error&&data===false)S.canWrite=false}catch(e){}
   try{await loadStaff()}catch(e){}
-  if(S.isDriver){S.driverId=readDriverId();route.view="tugasan";route.id=null;S.loaded.add("invoices");$("#who").innerHTML=`<span class="em">${esc((S.me&&S.me.name)||S.userName)}</span><button data-act="logout">Log keluar</button>`}
+  if(S.isDriver){S.driverId=readDriverId();route.view="tugasan";route.id=null;S.loaded.add("invoices");$("#who").innerHTML=`<span class="em">${esc((S.me&&S.me.name)||S.userName)}</span><button data-act="logout">Log Keluar</button>`}
   render();
   const timer=setTimeout(()=>{if(!isLoaded()){S.offline=true;COLS.forEach(c=>S.loaded.add(c));render()}},10000);
   const onData=()=>{if(isLoaded())clearTimeout(timer);if(S.offline&&isLoaded())S.offline=false;
