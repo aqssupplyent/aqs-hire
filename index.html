@@ -133,7 +133,10 @@ select option{background:var(--surface);color:var(--ink)}
 .lines{border:1px solid var(--line);border-top:0;overflow-x:auto}
 .lines td{padding:4px 8px;vertical-align:middle}
 .lines .cell{min-width:60px}
-.lines .cell.w{min-width:220px}
+.lines .cell.w{min-width:260px;resize:vertical;font:inherit;line-height:1.35}
+.lines td{vertical-align:top}
+.pre{white-space:pre-line}
+.noteline td{font-style:italic;color:var(--muted);background:var(--sunk)}
 .lines .cell.n{text-align:right;min-width:70px}
 .addline{color:var(--primary);background:none;border:0;cursor:pointer;padding:8px;font-weight:500}
 .xbtn{background:none;border:0;color:var(--muted);cursor:pointer;font-size:16px;padding:2px 6px}
@@ -146,6 +149,9 @@ select option{background:var(--surface);color:var(--ink)}
 .notes{margin-top:16px}
 .notes textarea{width:100%;min-height:64px;border:1px solid var(--line);border-radius:var(--r);background:var(--sunk);padding:8px}
 .ribbon{float:right;margin:-6px -10px 0 12px}
+.logo-pick{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.logo-pick img{width:72px;height:72px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:6px;padding:4px}
+.logo-pick span{font-size:12px;color:var(--muted)}
 
 /* chatter */
 .chatter{max-width:1080px;margin:18px auto 0}
@@ -247,7 +253,8 @@ const pill=([t,c])=>`<span class="pill ${c}">${esc(t)}</span>`;
 const exTag=d=>d&&d.example?`<span class="ex">contoh</span>`:"";
 function toast(msg){const t=document.createElement("div");t.className="toast";t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2600)}
 function nextNo(prefix,list,date){const y=(date||todayISO()).slice(0,4);const re=new RegExp("^"+prefix+"/"+y+"/(\\d+)$");let mx=0;list.forEach(x=>{const m=re.exec(x.no||"");if(m)mx=Math.max(mx,+m[1])});return prefix+"/"+y+"/"+String(mx+1).padStart(4,"0")}
-const lineTotal=l=>n(l.qty)*n(l.dur)*n(l.rate);
+function nextInvNo(date){const yy=(date||todayISO()).slice(2,4);let mx=Math.max(0,n(S.company.invNext)-1);S.invoices.forEach(i=>{const m=/^INV-\d{2}(\d{5})$/.exec(i.no||"");if(m)mx=Math.max(mx,+m[1])});return "INV-"+yy+String(mx+1).padStart(5,"0")}
+const lineTotal=l=>l.type==="note"?0:n(l.qty)*n(l.dur)*n(l.rate);
 const linesSum=ls=>(ls||[]).reduce((a,l)=>a+lineTotal(l),0);
 function invCalc(v){const sub=linesSum(v.lines);const tax=sub*n(v.taxRate)/100;const total=sub+tax;const paid=(v.payments||[]).reduce((a,p)=>a+n(p.amount),0);const due=Math.max(0,total-paid);
   let pay=null;if(v.status==="posted"){if(due<0.005)pay="paid";else if(v.dueDate&&v.dueDate<todayISO())pay="overdue";else if(paid>0)pay="partial";else pay="unpaid"}
@@ -355,18 +362,18 @@ function linesTable(F,editable){
   const ls=F.data.lines||[];
   const assetOpts=sel=>`<option value="">— pilih —</option>`+S.assets.map(a=>`<option value="${a.id}" ${a.id===sel?"selected":""}>${esc(a.code?a.code+" · ":"")}${esc(a.name)}</option>`).join("");
   return `<div class="tabs"><span>Butiran Sewaan</span></div><div class="lines"><table><thead><tr><th>Aset / Perkhidmatan</th><th>Keterangan</th><th class="r">Kuantiti</th><th class="r">Tempoh</th><th>Unit</th><th class="r">Kadar (RM)</th><th class="r">Jumlah</th>${editable?"<th></th>":""}</tr></thead><tbody>
-  ${ls.map((l,i)=>editable?`<tr>
+  ${ls.map((l,i)=>l.type==="note"?(editable?`<tr class="noteline"><td colspan="7"><textarea class="cell w" rows="3" data-l="${i}" data-lf="desc" placeholder="cth.&#10;Load : Cable (2 drums)&#10;Time : 09.00 am - 05.00 pm&#10;Pic : En. Hasyinor">${esc(l.desc)}</textarea></td><td><button class="xbtn" title="Buang nota" aria-label="Buang nota" data-act="delline" data-i="${i}">×</button></td></tr>`:`<tr class="noteline"><td colspan="7" class="pre">${esc(l.desc)}</td></tr>`):editable?`<tr>
     <td><select class="cell" data-l="${i}" data-lf="assetId">${assetOpts(l.assetId)}</select></td>
-    <td><input class="cell w" data-l="${i}" data-lf="desc" value="${esc(l.desc)}" placeholder="cth. Excavator 20 tan dengan operator"></td>
+    <td><textarea class="cell w" rows="2" data-l="${i}" data-lf="desc" placeholder="cth. Rental of lorry crane (VBE 6317)&#10;(Site A - Site B)">${esc(l.desc)}</textarea></td>
     <td><input class="cell n" type="number" step="any" min="0" data-l="${i}" data-lf="qty" value="${esc(l.qty)}"></td>
     <td><input class="cell n" type="number" step="any" min="0" data-l="${i}" data-lf="dur" value="${esc(l.dur)}"></td>
     <td><select class="cell" data-l="${i}" data-lf="unit">${UNITS.map(u=>`<option ${u===l.unit?"selected":""}>${u}</option>`).join("")}</select></td>
     <td><input class="cell n" type="number" step="0.01" min="0" data-l="${i}" data-lf="rate" value="${esc(l.rate)}"></td>
     <td class="r num" id="lt-${i}">${rmFmt.format(lineTotal(l))}</td>
     <td><button class="xbtn" title="Buang baris" aria-label="Buang baris" data-act="delline" data-i="${i}">×</button></td></tr>`
-   :`<tr><td>${esc((byId("assets",l.assetId)||{}).name||"—")}</td><td>${esc(l.desc)}</td><td class="r num">${esc(l.qty)}</td><td class="r num">${esc(l.dur)}</td><td>${esc(l.unit)}</td><td class="r num">${rmFmt.format(n(l.rate))}</td><td class="r num">${rmFmt.format(lineTotal(l))}</td></tr>`).join("")}
+   :`<tr><td>${esc((byId("assets",l.assetId)||{}).name||"—")}</td><td class="pre">${esc(l.desc)}</td><td class="r num">${esc(l.qty)}</td><td class="r num">${esc(l.dur)}</td><td>${esc(l.unit)}</td><td class="r num">${rmFmt.format(n(l.rate))}</td><td class="r num">${rmFmt.format(lineTotal(l))}</td></tr>`).join("")}
   ${!ls.length?`<tr><td colspan="8" style="color:var(--muted)">Tiada baris lagi.</td></tr>`:""}
-  </tbody></table>${editable?`<button class="addline" data-act="addline">+ Tambah baris</button>`:""}</div>`;
+  </tbody></table>${editable?`<button class="addline" data-act="addline">+ Tambah baris</button><button class="addline" data-act="addnote">+ Tambah nota</button>`:""}</div>`;
 }
 function custSelect(F,editable){
   if(!editable)return `<div class="ro">${esc(custName(F.data.customerId))}</div>`;
@@ -438,7 +445,7 @@ VIEWS.invois=()=>{
 
 function invForm(){
   const C=S.company;
-  const F=ensureForm("invoice","invoices",()=>({no:"",jobId:"",customerId:"",date:todayISO(),dueDate:addDays(todayISO(),C.terms??30),status:"draft",taxRate:C.defaultTax??8,lines:[blankLine()],payments:[],notes:C.footer||"",log:[logEntry("Invois draf dicipta")],createdAt:new Date().toISOString()}));
+  const F=ensureForm("invoice","invoices",()=>({no:"",jobId:"",customerId:"",date:todayISO(),dueDate:addDays(todayISO(),C.terms??15),status:"draft",taxRate:C.defaultTax??0,lines:[blankLine()],payments:[],notes:"",log:[logEntry("Invois draf dicipta")],createdAt:new Date().toISOString()}));
   if(!F)return{cp:crumb([["Invois","invois"],["Tidak dijumpai"]]),main:emptyBox("Invois tidak dijumpai","Invois ini mungkin telah dipadam.")};
   const d=F.data,st=d.status,c=invCalc(d);const ed=S.canWrite&&st==="draft";
   let acts=saveBtns(F);
@@ -461,13 +468,14 @@ function invForm(){
       <div class="fld"><label for="f-cust">Pelanggan</label>${custSelect(F,ed)}</div>
       ${fld("Tarikh Invois","date",F,ed,"date")}
       <div class="fld"><label for="f-jobId">Rekod Kerja</label>${jobSel}</div>
+      ${fld("Rujukan (DO / PO)","ref",F,ed,"text",'placeholder="cth. DO : 20163"')}
       ${fld("Tarikh Akhir Bayar","dueDate",F,ed,"date")}
       ${ed?`<div class="fld"><label for="f-taxRate">Cukai Perkhidmatan (%)</label><input id="f-taxRate" type="number" step="0.01" min="0" data-f="taxRate" value="${esc(d.taxRate)}"></div>`:`<div class="fld"><label>Cukai Perkhidmatan</label><div class="ro num">${esc(n(d.taxRate))}%</div></div>`}
     </div>
     ${linesTable(F,ed)}
     <div class="totals"><table>
       <tr><td>Jumlah Kecil</td><td class="r num" id="tot-sub">${RM(c.sub)}</td></tr>
-      <tr><td>SST (${esc(n(d.taxRate))}%)</td><td class="r num" id="tot-tax">${RM(c.tax)}</td></tr>
+      <tr ${n(d.taxRate)>0||ed?"":"hidden"}><td>SST (${esc(n(d.taxRate))}%)</td><td class="r num" id="tot-tax">${RM(c.tax)}</td></tr>
       <tr class="big"><td>Jumlah</td><td class="r num" id="tot-total">${RM(c.total)}</td></tr>
       ${pays.map((p,i)=>`<tr><td style="color:var(--muted)">Dibayar ${dmy(p.date)} · ${esc(p.method)}${p.ref?" · "+esc(p.ref):""} ${S.canWrite&&st==="posted"?`<button class="xbtn" title="Buang bayaran" aria-label="Buang bayaran" data-act="delpay" data-i="${i}">×</button>`:""}</td><td class="r num" style="color:var(--muted)">− ${RM(p.amount)}</td></tr>`).join("")}
       ${st==="posted"?`<tr class="${c.due>0.005?"due":""}"><td>Baki Perlu Dibayar</td><td class="r num">${RM(c.due)}</td></tr>`:""}
@@ -531,15 +539,21 @@ function assetForm(){
 
 /* ---- Company settings ---- */
 VIEWS.syarikat=()=>{
-  if(!form||form.kind!=="company"){form={kind:"company",id:"company",data:Object.assign({name:"AQS Supply",regNo:"",address:"",phone:"",email:"",sstNo:"",bank:"",bankAcc:"",defaultTax:8,terms:30,footer:"Sila buat bayaran ke akaun bank di atas dan nyatakan no. invois sebagai rujukan."},clone(S.company)),dirty:false}}
+  if(!form||form.kind!=="company"){form={kind:"company",id:"company",data:Object.assign({name:"AQS Supply Enterprise",regNo:"",address:"",phone:"",email:"",sstNo:"",bank:"",bankAcc:"",bankHolder:"",defaultTax:0,terms:15,invNext:"",logo:"",footer:"This is computer generated invoice no signature required."},clone(S.company)),dirty:false}}
   const F=form,ed=S.canWrite;const nEx=COLS.reduce((a,c)=>a+S[c].filter(x=>x.example).length,0);
   const cp=crumb([["Tetapan Syarikat"]])+`<div class="acts">${saveBtns(F)}</div>`;
-  const main=`<div class="sheet"><div class="sheet-head"><div class="doc-no"><small>Maklumat ini dicetak pada setiap invois</small>${esc(F.data.name||"Syarikat")}</div></div><div class="fields">
-   ${fld("Nama Syarikat","name",F,ed)}${fld("No. SSM","regNo",F,ed)}${fld("Telefon","phone",F,ed,"tel")}${fld("E-mel","email",F,ed,"email")}${fld("No. Pendaftaran SST","sstNo",F,ed)}${fld("Bank","bank",F,ed,"text",'placeholder="cth. Maybank"')}${fld("No. Akaun Bank","bankAcc",F,ed)}
+  const ta=(k,label,rows,ph)=>`<div class="fld full"><label for="f-${k}">${label}</label><textarea id="f-${k}" data-f="${k}" rows="${rows}" placeholder="${esc(ph||"")}" ${ed?"":"disabled"}>${esc(F.data[k])}</textarea></div>`;
+  const main=`<div class="sheet"><div class="sheet-head"><div class="doc-no"><small>Maklumat ini dicetak pada setiap invois</small>${esc(F.data.name||"Syarikat")}</div>
+    <div class="logo-pick">${F.data.logo?`<img src="${esc(F.data.logo)}" alt="Logo syarikat">`:`<span>Tiada logo</span>`}${ed?`<label class="btn sm" for="f-logo">${F.data.logo?"Tukar logo":"Muat naik logo"}</label><input id="f-logo" type="file" accept="image/*" hidden>${F.data.logo?`<button class="btn sm warn" data-act="nologo">Buang</button>`:""}`:""}</div></div>
+   <div class="fields">
+   ${fld("Nama Syarikat","name",F,ed,"text",'placeholder="AQS Supply Enterprise"')}${fld("No. Pendaftaran","regNo",F,ed,"text",'placeholder="LA0050422-A"')}${fld("Telefon / WhatsApp","phone",F,ed,"tel")}${fld("E-mel","email",F,ed,"email")}
+   ${fld("Bank","bank",F,ed,"text",'placeholder="Maybank Berhad"')}${fld("No. Akaun Bank","bankAcc",F,ed)}${fld("Nama Pemegang Akaun","bankHolder",F,ed,"text",'placeholder="AQS Supply Ent"')}${fld("No. Pendaftaran SST","sstNo",F,ed,"text",'placeholder="kosongkan jika tiada"')}
    <div class="fld"><label for="f-defaultTax">Kadar SST Lalai (%)</label><input id="f-defaultTax" type="number" step="0.01" min="0" data-f="defaultTax" value="${esc(F.data.defaultTax)}" ${ed?"":"disabled"}></div>
    <div class="fld"><label for="f-terms">Tempoh Bayaran (hari)</label><input id="f-terms" type="number" min="0" data-f="terms" value="${esc(F.data.terms)}" ${ed?"":"disabled"}></div>
-   <div class="fld full"><label for="f-address">Alamat</label><textarea id="f-address" data-f="address" rows="2" ${ed?"":"disabled"}>${esc(F.data.address)}</textarea></div>
-   <div class="fld full"><label for="f-footer">Nota Lalai Invois</label><textarea id="f-footer" data-f="footer" rows="2" ${ed?"":"disabled"}>${esc(F.data.footer)}</textarea></div>
+   <div class="fld"><label for="f-invNext">No. Invois Seterusnya</label><input id="f-invNext" type="number" min="1" data-f="invNext" value="${esc(F.data.invNext)}" placeholder="cth. 1264 → INV-2601264" ${ed?"":"disabled"}></div>
+   <div class="fld"><label>Contoh no. invois</label><div class="ro mono">${esc(nextInvNo())}</div></div>
+   ${ta("address","Alamat",3,"No. 50, Jalan ...")}
+   ${ta("footer","Nota kaki invois",2,"")}
   </div></div>
   <div class="sheet" style="margin-top:16px"><h2 class="sec">Data contoh</h2><p style="color:var(--muted);margin:0 0 10px">${nEx?`${nEx} rekod bertanda <span class="ex">contoh</span> ada dalam sistem.`:"Tiada rekod contoh dalam sistem."}</p>
    <div style="display:flex;gap:8px;flex-wrap:wrap">${nEx?`<button class="btn warn" data-act="unseed">Padam semua data contoh</button>`:`<button class="btn" data-act="seed">Muatkan data contoh</button>`}</div></div>`;
@@ -563,10 +577,11 @@ document.addEventListener("input",e=>{
 });
 document.addEventListener("change",e=>{
   const t=e.target;if(!form)return;
-  if(t.dataset.lf==="assetId"){const l=form.data.lines[+t.dataset.l];const a=byId("assets",t.value);if(a){l.desc=l.desc||a.name+(a.plate?" ("+a.plate+")":"");l.unit=a.unit||l.unit;l.rate=n(a.rate)}render();return}
+  if(t.id==="f-logo"&&t.files&&t.files[0]){const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,320/Math.max(im.width,im.height));const c=document.createElement("canvas");c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext("2d").drawImage(im,0,0,c.width,c.height);form.data.logo=c.toDataURL("image/png");form.dirty=true;render()};im.onerror=()=>toast("Fail itu bukan gambar yang sah.");im.src=fr.result};fr.readAsDataURL(t.files[0]);return}
+  if(t.dataset.lf==="assetId"){const l=form.data.lines[+t.dataset.l];const a=byId("assets",t.value);if(a){l.desc=l.desc||(a.name+(a.plate?" ("+a.plate+")":""));l.unit=a.unit||l.unit;l.rate=n(a.rate)}render();return}
   if(t.dataset.f==="customerId"&&form.kind==="invoice"){const j=byId("jobs",form.data.jobId);if(j&&j.customerId!==t.value)form.data.jobId="";render();return}
   if(t.dataset.f==="jobId"&&form.kind==="invoice"){const j=byId("jobs",t.value);if(j&&!form.data.customerId)form.data.customerId=j.customerId;render();return}
-  if(t.dataset.f==="date"&&form.kind==="invoice"){form.data.dueDate=addDays(t.value,S.company.terms??30);render()}
+  if(t.dataset.f==="date"&&form.kind==="invoice"){form.data.dueDate=addDays(t.value,S.company.terms??15);render()}
 });
 document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id==="note"){e.preventDefault();ACT.note()}if(e.key==="Escape")closeModal()});
 
@@ -584,6 +599,8 @@ ACT.clearjf=()=>{S.jobFilter=null;render()};
 ACT.jobinvs=()=>{if(guardDirty())return;S.jobFilter=form.id;S.flt.invois="all";go("invois")};
 ACT.new=d=>{if(guardDirty())return;if(!S.canWrite){toast("Anda hanya boleh melihat.");return}const v={job:"kerja",invoice:"invois",customer:"pelanggan",asset:"aset"}[d.k];go(v,"new")};
 ACT.addline=()=>{form.data.lines.push(blankLine());form.dirty=true;render()};
+ACT.nologo=()=>{form.data.logo="";form.dirty=true;render()};
+ACT.addnote=()=>{form.data.lines.push({type:"note",desc:""});form.dirty=true;render()};
 ACT.delline=d=>{form.data.lines.splice(+d.i,1);form.dirty=true;render()};
 ACT.discard=()=>{if(form.isNew){const v=route.view;form=null;go(v)}else{form=null;render()}};
 const COLMAP={job:"jobs",invoice:"invoices",customer:"customers",asset:"assets"};
@@ -614,7 +631,7 @@ ACT.jobst=async d=>{
 ACT.mkinv=async()=>{
   const j=form.data,C=S.company;const id=newId("invoices");
   const already=S.invoices.filter(i=>i.jobId===form.id&&i.status!=="cancelled").length;
-  const inv={no:"",jobId:form.id,customerId:j.customerId,date:todayISO(),dueDate:addDays(todayISO(),C.terms??30),status:"draft",taxRate:C.defaultTax??8,lines:clone(j.lines),payments:[],notes:C.footer||"",log:[logEntry("Invois draf dicipta daripada "+j.no)],createdAt:new Date().toISOString()};
+  const inv={no:"",ref:j.po?j.po:"",jobId:form.id,customerId:j.customerId,date:todayISO(),dueDate:addDays(todayISO(),C.terms??15),status:"draft",taxRate:C.defaultTax??0,lines:clone(j.lines),payments:[],notes:"",log:[logEntry("Invois draf dicipta daripada "+j.no)],createdAt:new Date().toISOString()};
   if(j.example)inv.example=true;
   const doIt=async()=>{try{await save("invoices",id,inv);const jd=clone(j);jd.log=(jd.log||[]).concat(logEntry("Invois draf dicipta"));await save("jobs",form.id,jd);go("invois",id);toast("Invois draf dicipta")}catch(e){}};
   if(already)modal("Kerja ini sudah ada invois",`<p>${already} invois aktif sudah dicipta untuk ${esc(j.no)}. Cipta invois lain (cth. untuk bil bulanan atau bil tambahan)?</p>`,"Cipta juga",doIt);else doIt();
@@ -622,7 +639,7 @@ ACT.mkinv=async()=>{
 ACT.post=async()=>{
   const err=validate(form);if(err){toast(err);return}
   if(!(form.data.lines||[]).length||linesSum(form.data.lines)<=0){toast("Invois perlu sekurang-kurangnya satu baris bernilai.");return}
-  const no=form.data.no||nextNo("INV",S.invoices,form.data.date);
+  const no=form.data.no||nextInvNo(form.data.date);
   try{await commit("invoices",{status:"posted",no},"Invois disahkan sebagai "+no);toast("Invois "+no+" disahkan")}catch(e){}
 };
 ACT.invst=async d=>{
@@ -666,20 +683,62 @@ function closeModal(){$("#overlay").innerHTML=""}
 async function getDL(){return{save:async({filename,data})=>{const type=filename.endsWith(".csv")?"text/csv;charset=utf-8":"text/html;charset=utf-8";const url=URL.createObjectURL(new Blob([data],{type}));const a=document.createElement("a");a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);return{status:"saved"}}}}
 ACT.printinv=()=>{const w=window.open("","_blank");if(!w){toast("Benarkan pop-up untuk mencetak.");return}w.document.write(invoiceHTML(form.data));w.document.close();w.focus();setTimeout(()=>w.print(),400)};
 function invoiceHTML(v){
-  const C=S.company,cu=byId("customers",v.customerId)||{},c=invCalc(v),job=byId("jobs",v.jobId);
-  const rows=(v.lines||[]).map((l,i)=>`<tr><td>${i+1}</td><td>${esc(l.desc||(byId("assets",l.assetId)||{}).name||"")}</td><td class="r">${esc(l.qty)}</td><td class="r">${esc(l.dur)} ${esc(l.unit)}</td><td class="r">${rmFmt.format(n(l.rate))}</td><td class="r">${rmFmt.format(lineTotal(l))}</td></tr>`).join("");
-  return `<!doctype html><html lang="ms"><head><meta charset="utf-8"><title>${esc(v.no||"Invois Draf")}</title><style>
-body{font-family:Arial,Helvetica,sans-serif;color:#1a2226;margin:40px;font-size:13px}h1{font-size:26px;margin:0;color:#1d5a6e;letter-spacing:.04em}
-.top{display:flex;justify-content:space-between;gap:24px;border-bottom:3px solid #1d5a6e;padding-bottom:14px;margin-bottom:18px}.co b{font-size:17px}
-.meta td{padding:2px 10px 2px 0}table.l{width:100%;border-collapse:collapse;margin-top:18px}table.l th{background:#1d5a6e;color:#fff;text-align:left;padding:7px}table.l td{padding:7px;border-bottom:1px solid #d6dde0}
-.r{text-align:right}.tot{margin-left:auto;margin-top:12px;border-collapse:collapse}.tot td{padding:4px 8px}.tot .g td{font-weight:bold;font-size:15px;border-top:2px solid #1a2226}
-.foot{margin-top:28px;font-size:12px;color:#5b6870;white-space:pre-wrap}@media print{body{margin:16mm}}</style></head><body>
-<div class="top"><div class="co"><b>${esc(C.name||"AQS Supply")}</b>${C.regNo?" ("+esc(C.regNo)+")":""}<br>${esc(C.address||"").replace(/\n/g,"<br>")}<br>${esc([C.phone,C.email].filter(Boolean).join(" · "))}${C.sstNo?"<br>No. SST: "+esc(C.sstNo):""}</div>
-<div style="text-align:right"><h1>${v.status==="draft"?"INVOIS DRAF":"INVOIS"}</h1><table class="meta" style="margin-left:auto"><tr><td>No.</td><td><b>${esc(v.no||"—")}</b></td></tr><tr><td>Tarikh</td><td>${dmy(v.date)}</td></tr><tr><td>Tarikh Akhir</td><td>${dmy(v.dueDate)}</td></tr>${job?`<tr><td>Rujukan Kerja</td><td>${esc(job.no)}${job.po?" / PO "+esc(job.po):""}</td></tr>`:""}</table></div></div>
-<div><b>Kepada:</b><br>${esc(cu.name||"")}<br>${esc(cu.address||"").replace(/\n/g,"<br>")}${cu.contact?"<br>u.p. "+esc(cu.contact):""}${job&&job.site?"<br><br><b>Tapak:</b> "+esc(job.site):""}</div>
-<table class="l"><thead><tr><th>#</th><th>Keterangan</th><th class="r">Kuantiti</th><th class="r">Tempoh</th><th class="r">Kadar (RM)</th><th class="r">Jumlah (RM)</th></tr></thead><tbody>${rows}</tbody></table>
-<table class="tot"><tr><td>Jumlah Kecil</td><td class="r">${RM(c.sub)}</td></tr><tr><td>SST ${n(v.taxRate)}%</td><td class="r">${RM(c.tax)}</td></tr><tr class="g"><td>JUMLAH</td><td class="r">${RM(c.total)}</td></tr>${c.paid?`<tr><td>Telah Dibayar</td><td class="r">− ${RM(c.paid)}</td></tr><tr class="g"><td>BAKI</td><td class="r">${RM(c.due)}</td></tr>`:""}</table>
-<div class="foot">${C.bank?"Bayaran kepada: "+esc(C.bank)+" "+esc(C.bankAcc||"")+" ("+esc(C.name||"")+")\n":""}${esc(v.notes||"")}</div></body></html>`;
+  const C=S.company,cu=byId("customers",v.customerId)||{},c=invCalc(v);
+  const money=x=>"RM "+rmFmt.format(n(x));const br=t=>esc(t||"").replace(/\n/g,"<br>");
+  const title=v.status==="draft"?"Draft Invoice":v.status==="cancelled"?"Cancelled Invoice":"Invoice "+esc(v.no);
+  const rows=(v.lines||[]).map(l=>l.type==="note"?`<tr class="note"><td colspan="4">${br(l.desc)}</td></tr>`:
+    `<tr><td>${br(l.desc||(byId("assets",l.assetId)||{}).name||"")}</td><td class="r">${rmFmt.format(n(l.qty)*n(l.dur))}</td><td class="r">${rmFmt.format(n(l.rate))}</td><td class="r">${money(lineTotal(l))}</td></tr>`).join("");
+  const pays=(v.payments||[]).map(p=>`<tr><td class="paid">Paid on ${dmy(p.date)}</td><td class="r paid">${money(p.amount)}</td></tr>`).join("");
+  const termsDays=v.date&&v.dueDate?Math.round((new Date(v.dueDate)-new Date(v.date))/864e5):null;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${v.no?esc(v.no):"Draft Invoice"}</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap">
+<style>
+@page{size:A4;margin:0}
+*{box-sizing:border-box}
+html,body{margin:0;background:#e9ebee}
+body{font-family:Roboto,Arial,Helvetica,sans-serif;color:#222;font-size:12.5px;line-height:1.45;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.page{width:210mm;min-height:297mm;margin:10mm auto;background:#fff;position:relative;padding:0 12mm 24mm;display:flex;flex-direction:column}
+.band{position:relative;margin:0 -12mm;height:50mm;padding:11mm 12mm 0}
+.band::before{content:"";position:absolute;inset:0;background:#f9eaea;clip-path:polygon(0 0,100% 0,100% 72%,63% 72%,57% 100%,0 100%);z-index:0}
+.logo{position:absolute;z-index:1;left:12mm;top:9mm;width:34mm;height:34mm;background:#fff;display:flex;align-items:center;justify-content:center;padding:3mm}
+.logo img{max-width:100%;max-height:100%}
+.co{position:absolute;z-index:1;right:12mm;top:9mm;text-align:right;font-size:12.5px;line-height:1.45}
+h1{position:absolute;z-index:1;right:12mm;top:39mm;line-height:1.2;margin:0;font-weight:400;font-size:27px;color:#b3262e}
+.cust{margin-top:6mm;font-size:13px}
+.meta{display:grid;grid-template-columns:1fr 1fr 1fr;margin-top:10mm}
+.meta b{display:block;font-weight:700;font-size:13px}
+table.l{width:100%;border-collapse:collapse;margin-top:8mm}
+table.l th{font-weight:400;text-align:left;padding:6px 8px;border-bottom:1px solid #444}
+table.l td{padding:8px;vertical-align:top}
+table.l tbody tr:nth-child(odd) td{background:#f2f3f5}
+table.l tbody tr{border-bottom:1px solid #e2e4e8}
+table.l tr.note td{font-style:italic}
+.r{text-align:right;white-space:nowrap}
+.terms{margin-top:5mm}
+.sum{display:flex;justify-content:space-between;align-items:flex-start;margin-top:4mm;gap:10mm}
+.pay{margin-top:9mm}
+table.t{border-collapse:collapse;min-width:72mm}
+table.t td{padding:7px 10px}
+table.t .tot td{background:#f2f3f5;color:#b3262e;font-weight:700}
+table.t .due td{font-weight:700;border-top:1px solid #444}
+.paid{font-style:italic}
+.foot{position:absolute;left:12mm;right:12mm;bottom:12mm;border-top:1px solid #222;padding-top:6px;display:flex;justify-content:space-between;font-size:12px}
+.foot span:last-child{color:#666}
+@media print{html,body{background:#fff}.page{margin:0;min-height:297mm;page-break-after:always}}
+</style></head><body><div class="page">
+<div class="band">
+  ${C.logo?`<div class="logo"><img src="${esc(C.logo)}" alt=""></div>`:""}
+  <div class="co">${esc(C.name||"AQS Supply Enterprise")}${C.regNo?" ("+esc(C.regNo)+")":""}<br>${br(C.address)}${C.phone?"<br>Call &amp; WhatsApp : "+esc(C.phone):""}${C.email?"<br>Email : "+esc(C.email):""}${C.sstNo?"<br>SST No : "+esc(C.sstNo):""}</div>
+  <h1>${title}</h1>
+</div>
+<div class="cust">${esc(cu.name||"")}<br>${br(cu.address)}${cu.regNo?"<br>Tax ID: "+esc(cu.regNo):""}</div>
+<div class="meta"><div><b>Invoice Date</b>${dmy(v.date)}</div><div><b>Due Date</b>${dmy(v.dueDate)}</div>${v.ref?`<div><b>Reference</b>${esc(v.ref)}</div>`:"<div></div>"}</div>
+<table class="l"><thead><tr><th>Description</th><th class="r">Quantity</th><th class="r">Unit Price</th><th class="r">Amount</th></tr></thead><tbody>${rows}</tbody></table>
+${termsDays!=null?`<div class="terms">Payment terms: ${termsDays} Days</div>`:""}
+<div class="sum"><div class="pay">${v.no?`Payment Communication: <b>${esc(v.no)}</b><br>`:""}${C.bankAcc?`on this account: <b>${esc(C.bankHolder||C.name||"")} ${esc(C.bankAcc)}${C.bank?" ("+esc(C.bank)+")":""}</b>`:""}${v.notes&&v.notes!==C.footer?`<div style="margin-top:4mm;white-space:pre-line">${esc(v.notes)}</div>`:""}</div>
+<table class="t">${c.tax>0?`<tr><td>Untaxed Amount</td><td class="r">${money(c.sub)}</td></tr><tr><td>SST ${n(v.taxRate)}%</td><td class="r">${money(c.tax)}</td></tr>`:""}<tr class="tot"><td>Total</td><td class="r">${money(c.total)}</td></tr>${pays}${c.paid>0?`<tr class="due"><td>Amount Due</td><td class="r">${money(c.due)}</td></tr>`:""}</table></div>
+<div class="foot"><span>${esc(C.footer||"This is computer generated invoice no signature required.")}</span><span>Page 1 / 1</span></div>
+</div></body></html>`;
 }
 ACT.dlinv=async()=>{
   const dl=await getDL();if(!dl){toast("Muat turun tidak tersedia di paparan ini.");return}

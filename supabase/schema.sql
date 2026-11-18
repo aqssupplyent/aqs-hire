@@ -43,8 +43,8 @@ end $$;
 
 -- 3. Tetapan syarikat awal
 insert into public.config (id, data) values ('company', jsonb_build_object(
-  'name','AQS Supply','defaultTax',8,'terms',30,
-  'footer','Sila buat bayaran ke akaun bank di atas dan nyatakan no. invois sebagai rujukan.'))
+  'name','AQS Supply Enterprise','defaultTax',0,'terms',15,
+  'footer','This is computer generated invoice no signature required.'))
 on conflict (id) do nothing;
 
 -- 4. Daftar staf. Tukar e-mel di bawah kepada e-mel anda (dan staf lain).
