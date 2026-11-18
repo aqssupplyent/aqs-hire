@@ -467,7 +467,7 @@ function jobForm(){
       ${fld("Kenderaan","vehicle",F,ed,"text",'placeholder="cth. AQS ENTERPRISE (sewa) / VBE 6317"')}
       ${fld("Dropoff","dropoff",F,ed,"text",'placeholder="Lokasi hantar"')}
       ${fld("Pemandu / Operator","operator",F,ed,"text",'placeholder="Nama & no. telefon"')}
-      <div class="fld"><label for="f-driverId">Pemandu Ditugaskan</label>${ed?`<select id="f-driverId" data-f="driverId"><option value="">— pilih pemandu —</option>${drivers().map(x=>`<option value="${esc(x.id)}" ${x.id===d.driverId?"selected":""}>${esc(x.name)}</option>`).join("")}</select>`:`<div class="ro">${esc(jobDriverName(d)||"—")}</div>`}</div>
+      <div class="fld"><label for="f-driverId">Pemandu Ditugaskan</label>${ed?`<select id="f-driverId" data-f="driverId"><option value="">— pilih pemandu —</option>${drivers().map(x=>`<option value="${esc(x.id)}" ${x.id===d.driverId?"selected":""}>${esc(x.name)}${x.plate?" · "+esc(x.plate):""}</option>`).join("")}</select>`:`<div class="ro">${esc(jobDriverName(d)||"—")}</div>`}</div>
       ${fld("SV Tapak / PIC","supervisor",F,ed,"text",'placeholder="Nama & no. telefon"')}
     </div>
     ${doSummary(d,F.id)}
@@ -611,8 +611,8 @@ VIEWS.syarikat=()=>{
    ${ta("doRemarks","Remarks pada DO",3,"")}
   </div></div>
   <div class="sheet" style="margin-top:16px"><div class="sheet-head"><h2 class="sec">Pemandu</h2>${ed?`<button class="btn sm pri" data-act="drvadd">Tambah pemandu</button>`:""}</div>
-   <div class="tbl-wrap"><table><thead><tr><th>Nama</th><th>Telefon</th><th class="r">Job aktif</th><th></th></tr></thead><tbody>${drivers().map(x=>`<tr><td>${esc(x.name)}</td><td class="num">${esc(x.phone||"—")}</td><td class="r num">${S.jobs.filter(j=>j.driverId===x.id&&(j.status==="confirmed"||j.status==="ongoing")).length}</td><td class="r">${ed?`<button class="btn sm warn" data-act="drvdel" data-id="${esc(x.id)}">Buang</button>`:""}</td></tr>`).join("")||`<tr><td colspan="4" style="color:var(--muted)">Belum ada pemandu. Tambah nama pemandu supaya mereka boleh memilih nama sendiri di telefon.</td></tr>`}</tbody></table></div>
-   <p style="color:var(--muted);font-size:13px;margin:10px 0 0">Semua pemandu guna satu akaun log masuk bersama (peranan Pemandu dalam senarai Akaun Log Masuk di bawah). Selepas log masuk, mereka pilih nama sendiri.</p></div>
+   <div class="tbl-wrap"><table><thead><tr><th>Nama</th><th>Telefon</th><th>No. Lori</th><th>Akaun log masuk</th><th class="r">Job aktif</th><th></th></tr></thead><tbody>${drivers().map(x=>`<tr><td>${esc(x.name)}</td><td class="num">${esc(x.phone||"—")}</td><td class="mono">${esc(x.plate||"—")}</td><td>${x.email?esc(x.email)+(S.staff.some(y=>String(y.email).toLowerCase()===String(x.email).toLowerCase())?"":` <span class="pill p-amber">belum didaftar</span>`):`<span style="color:var(--muted)">akaun bersama</span>`}</td><td class="r num">${S.jobs.filter(j=>j.driverId===x.id&&(j.status==="confirmed"||j.status==="ongoing")).length}</td><td class="r">${ed?`<button class="btn sm" data-act="drvedit" data-id="${esc(x.id)}">Ubah</button> <button class="btn sm warn" data-act="drvdel" data-id="${esc(x.id)}">Buang</button>`:""}</td></tr>`).join("")||`<tr><td colspan="6" style="color:var(--muted)">Belum ada pemandu. Tambah nama pemandu supaya mereka boleh memilih nama sendiri di telefon.</td></tr>`}</tbody></table></div>
+   <p style="color:var(--muted);font-size:13px;margin:10px 0 0">Jika pemandu ada akaun log masuk sendiri (cth. vbe6317@aqssupply.com), isi di "Akaun log masuk": sistem terus kenal pemandu itu dan dia hanya nampak job sendiri. Akaun itu juga perlu dicipta di Supabase → Authentication → Users.</p></div>
   <div class="sheet" style="margin-top:16px"><div class="sheet-head"><h2 class="sec">Akaun Log Masuk</h2>${S.me&&S.me.role==="admin"?`<button class="btn sm pri" data-act="staffadd">Tambah akaun</button>`:""}</div>
    <div class="tbl-wrap"><table><thead><tr><th>Nama</th><th>E-mel</th><th>Peranan</th><th></th></tr></thead><tbody>${S.staff.map(x=>`<tr><td>${esc(x.name||"—")}</td><td>${esc(x.email)}</td><td>${x.role==="driver"?`<span class="pill p-amber">Pemandu</span>`:`<span class="pill p-info">Admin</span>`}</td><td class="r">${S.me&&S.me.role==="admin"&&String(x.email).toLowerCase()!==String(S.userName).toLowerCase()?`<button class="btn sm warn" data-act="staffdel" data-email="${esc(x.email)}">Buang</button>`:""}</td></tr>`).join("")||`<tr><td colspan="4" style="color:var(--muted)">Senarai staf tidak dapat dibaca. Jalankan SQL 002 di Supabase.</td></tr>`}</tbody></table></div>
    <p style="color:var(--muted);font-size:13px;margin:10px 0 0">Setiap akaun di sini juga perlu dicipta di Supabase → Authentication → Users → Add user (tanda Auto Confirm User) dengan e-mel dan kata laluan yang sama. Untuk akaun pemandu bersama, e-mel tidak perlu wujud, contohnya pemandu@aqssupply.com.</p></div>
@@ -795,6 +795,8 @@ ACT.jrpaste=()=>{
 const drivers=()=>Array.isArray(S.company.drivers)?S.company.drivers:[];
 const driverName=id=>{const x=drivers().find(y=>y.id===id);return x?x.name:""};
 const jobDriverName=j=>driverName(j.driverId)||staffName(j.driverEmail)||String(j.operator||"").replace(/\(.*?\)/g,"").trim();
+const boundDriver=()=>{const me=String(S.userName||"").toLowerCase();return me?drivers().find(x=>x.email&&String(x.email).toLowerCase()===me)||null:null};
+const curDriverId=()=>{const b=boundDriver();return b?b.id:S.driverId};
 function readDriverId(){try{return localStorage.getItem("aqs-driver")||""}catch(e){return""}}
 function writeDriverId(v){try{v?localStorage.setItem("aqs-driver",v):localStorage.removeItem("aqs-driver")}catch(e){}}
 const staffName=email=>{if(!email)return"";const x=S.staff.find(y=>String(y.email).toLowerCase()===String(email).toLowerCase());return x?(x.name||x.email):email};
@@ -805,11 +807,23 @@ ACT.staffadd=()=>modal("Tambah akaun log masuk",`<div class="fld"><label for="s-
   const{error}=await S.sb.from("staff").upsert({email,name,role});if(error){toast("Gagal menambah. Pastikan SQL 002 sudah dijalankan.");return false}
   await loadStaff();render();toast(name||email+" ditambah")});
 async function saveDrivers(list){const C=clone(S.company);C.drivers=list;try{await S.db.doc("config/company").set(C);S.company=C;if(form&&form.kind==="company")form.data.drivers=clone(list);render();return true}catch(e){handleWriteErr(e);return false}}
-ACT.drvadd=()=>modal("Tambah pemandu",`<div class="fld"><label for="dv-name">Nama</label><input id="dv-name" placeholder="cth. SUHAIMI"></div><div class="fld"><label for="dv-phone">Telefon</label><input id="dv-phone" type="tel" placeholder="cth. 011-5925 5852"></div>`,"Tambah",async()=>{
-  const name=$("#dv-name").value.trim().toUpperCase(),phone=$("#dv-phone").value.trim();if(!name){toast("Isi nama pemandu.");return false}
-  if(drivers().some(x=>x.name===name)){toast(name+" sudah ada.");return false}
-  const ok=await saveDrivers(drivers().concat({id:"d"+Date.now().toString(36),name,phone}));if(!ok)return false;toast(name+" ditambah")});
-ACT.drvdel=d=>modal("Buang pemandu "+driverName(d.id)+"?","<p>Job lama dan DO yang sudah ditandatangani tidak terjejas.</p>","Buang",async()=>{const ok=await saveDrivers(drivers().filter(x=>x.id!==d.id));if(!ok)return false},true);
+function driverModal(x){
+  x=x||{};
+  modal(x.id?"Ubah pemandu":"Tambah pemandu",`<div class="fld"><label for="dv-name">Nama</label><input id="dv-name" value="${esc(x.name||"")}" placeholder="cth. SUHAIMI"></div><div class="fld"><label for="dv-phone">Telefon</label><input id="dv-phone" type="tel" value="${esc(x.phone||"")}" placeholder="cth. 011-5925 5852"></div><div class="fld"><label for="dv-plate">No. Lori</label><input id="dv-plate" value="${esc(x.plate||"")}" placeholder="cth. VBE 6317"></div><div class="fld"><label for="dv-email">Akaun log masuk</label><input id="dv-email" type="email" value="${esc(x.email||"")}" placeholder="cth. vbe6317@aqssupply.com"></div><p style="color:var(--muted);font-size:13px;margin:6px 0 0">Kosongkan akaun log masuk jika pemandu guna akaun bersama.</p>`,x.id?"Simpan":"Tambah",async()=>{
+    const name=$("#dv-name").value.trim().toUpperCase(),phone=$("#dv-phone").value.trim(),plate=$("#dv-plate").value.trim().toUpperCase(),email=$("#dv-email").value.trim().toLowerCase();
+    if(!name){toast("Isi nama pemandu.");return false}
+    if(email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){toast("E-mel akaun tidak sah.");return false}
+    if(drivers().some(y=>y.id!==x.id&&y.name===name)){toast(name+" sudah ada.");return false}
+    if(email&&drivers().some(y=>y.id!==x.id&&String(y.email||"").toLowerCase()===email)){toast("Akaun itu sudah dipautkan kepada pemandu lain.");return false}
+    const rec={id:x.id||"d"+Date.now().toString(36),name,phone,plate,email};
+    const list=x.id?drivers().map(y=>y.id===x.id?rec:y):drivers().concat(rec);
+    if(email){const{error}=await S.sb.from("staff").upsert({email,name,role:"driver"});if(error){toast("Akaun tidak dapat didaftarkan sebagai pemandu. Pastikan SQL 002 sudah dijalankan.");return false}}
+    const old=String(x.email||"").toLowerCase();if(old&&old!==email){await S.sb.from("staff").delete().eq("email",old).eq("role","driver")}
+    const ok=await saveDrivers(list);if(!ok)return false;await loadStaff();render();toast(name+(x.id?" dikemas kini":" ditambah"))});
+}
+ACT.drvadd=()=>driverModal();
+ACT.drvedit=d=>driverModal(drivers().find(y=>y.id===d.id));
+ACT.drvdel=d=>{const x=drivers().find(y=>y.id===d.id)||{};modal("Buang pemandu "+(x.name||"")+"?",`<p>Job lama dan DO yang sudah ditandatangani tidak terjejas.${x.email?" Akaun "+esc(x.email)+" tidak lagi boleh melihat data sistem.":""}</p>`,"Buang",async()=>{if(x.email){await S.sb.from("staff").delete().eq("email",String(x.email).toLowerCase()).eq("role","driver")}const ok=await saveDrivers(drivers().filter(y=>y.id!==d.id));if(!ok)return false;await loadStaff();render()},true)};
 ACT.staffdel=d=>modal("Buang "+d.email+"?","<p>Orang ini tidak lagi boleh melihat atau mengubah data sistem.</p>","Buang",async()=>{const{error}=await S.sb.from("staff").delete().eq("email",d.email);if(error){toast("Gagal membuang.");return false}await loadStaff();render()},true);
 
 /* ---------- time helpers ---------- */
@@ -820,18 +834,18 @@ function fmt12(t){const m=/^(\d{2}):(\d{2})$/.exec(t||"");if(!m)return t||"";let
 const dlRow=(k,v)=>v?`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`:"";
 VIEWS.tugasan=()=>{
   const me=String(S.userName||"").toLowerCase();
-  if(S.isDriver&&!driverName(S.driverId)){
-    const ds=drivers();
+  if(S.isDriver&&!driverName(curDriverId())){
+    const ds=drivers().filter(x=>!x.email);
     return{cp:crumb([["Siapa anda?"]]),main:ds.length?`<p style="margin:0 0 12px;color:var(--muted)">Pilih nama anda. Telefon ini akan ingat pilihan anda.</p><div class="drvpick">${ds.map(x=>`<button class="btn" data-act="pickdrv" data-id="${esc(x.id)}"><b>${esc(x.name)}</b>${x.phone?`<span>${esc(x.phone)}</span>`:""}</button>`).join("")}</div>`
-      :emptyBox("Belum ada nama pemandu","Minta admin tambah nama pemandu di Tetapan → Pemandu, kemudian muat semula halaman ini.")};
+      :emptyBox("Belum ada nama pemandu","Akaun ini tidak dipautkan kepada mana-mana pemandu. Minta admin isi Akaun log masuk untuk pemandu anda di Tetapan → Pemandu, atau tambah pemandu yang guna akaun bersama.")};
   }
-  const mine=S.jobs.filter(j=>!S.isDriver||(j.driverId?j.driverId===S.driverId:String(j.driverEmail||"").toLowerCase()===me));
+  const mine=S.jobs.filter(j=>!S.isDriver||(j.driverId?j.driverId===curDriverId():String(j.driverEmail||"").toLowerCase()===me));
   const act=mine.filter(j=>j.status==="confirmed"||j.status==="ongoing").sort((a,b)=>(a.startDate||"").localeCompare(b.startDate||""));
   const done=mine.filter(j=>j.do&&j.do.status==="signed").sort((a,b)=>(b.do.submittedAt||"").localeCompare(a.do.submittedAt||"")).slice(0,10);
   const card=j=>`<article class="tcard"><div class="th"><span class="mono">${esc(j.no)}</span>${pill(JOB_ST[j.status]||JOB_ST.draft)}</div>
     <h3>${esc(custName(j.customerId))}</h3><dl>${dlRow("Tarikh",dmy(j.startDate)+(j.time?" · "+j.time:""))}${dlRow("Projek",j.site)}${dlRow("Pickup",j.pickup)}${dlRow("Dropoff",j.dropoff)}${dlRow("Kenderaan",j.vehicle)}${dlRow("SV Tapak",j.supervisor)}${dlRow("Kerja",jobItems(j))}${j.notes?dlRow("Catatan",j.notes):""}</dl>
     <div class="tact">${j.status==="confirmed"?`<button class="btn pri" data-act="accept" data-id="${j.id}">Terima Job</button>`:""}${j.status==="ongoing"&&!(j.do&&j.do.status==="signed")?`<button class="btn pri" data-act="dofill" data-id="${j.id}">Isi DO &amp; Tandatangan</button>`:""}${j.do&&j.do.status==="signed"?`<button class="btn" data-act="doprint" data-id="${j.id}">Lihat DO ${esc(j.do.no)}</button>`:""}</div></article>`;
-  const cp=crumb([["Tugasan Saya"]])+(S.isDriver?`<div class="right"><span style="font-weight:600">${esc(driverName(S.driverId))}</span><button class="btn sm" data-act="switchdrv">Tukar pemandu</button></div>`:"");
+  const cp=crumb([["Tugasan Saya"]])+(S.isDriver?`<div class="right"><span style="font-weight:600">${esc(driverName(curDriverId()))}${(()=>{const x=drivers().find(y=>y.id===curDriverId());return x&&x.plate?" · "+esc(x.plate):""})()}</span>${boundDriver()?"":`<button class="btn sm" data-act="switchdrv">Tukar pemandu</button>`}</div>`:"");
   let main=`<h2 class="sec">Job aktif</h2>`;
   main+=act.length?`<div class="tgrid">${act.map(card).join("")}</div>`:emptyBox("Tiada job buat masa ini","Job yang admin tetapkan kepada anda akan muncul di sini. Tarik ke bawah atau muat semula untuk semak.");
   if(done.length)main+=`<h2 class="sec" style="margin-top:20px">DO terkini</h2><div class="tgrid">${done.map(card).join("")}</div>`;
@@ -839,7 +853,7 @@ VIEWS.tugasan=()=>{
 };
 ACT.pickdrv=d=>{S.driverId=d.id;writeDriverId(d.id);render();toast("Hai, "+driverName(d.id))};
 ACT.switchdrv=()=>{S.driverId="";writeDriverId("");render()};
-ACT.accept=async d=>{const j=byId("jobs",d.id);if(!j)return;const data=clone(j);data.status="ongoing";data.acceptedAt=new Date().toISOString();data.log=(data.log||[]).concat(logEntry("Job diterima oleh "+(driverName(S.driverId)||(S.me&&S.me.name)||S.userName)));try{await save("jobs",d.id,data);toast("Job diterima")}catch(e){}};
+ACT.accept=async d=>{const j=byId("jobs",d.id);if(!j)return;const data=clone(j);data.status="ongoing";data.acceptedAt=new Date().toISOString();data.log=(data.log||[]).concat(logEntry("Job diterima oleh "+(driverName(curDriverId())||(S.me&&S.me.name)||S.userName)));try{await save("jobs",d.id,data);toast("Job diterima")}catch(e){}};
 
 /* ---------- Delivery Order capture ---------- */
 let DOF=null;
@@ -859,7 +873,7 @@ function doItemsHTML(){return DOF.D.items.map((it,i)=>`<div class="doitem"><span
 ACT.dofill=d=>{
   const j=byId("jobs",d.id);if(!j)return;
   const clean=t=>String(t||"").replace(/\(.*?\)/g,"").trim();
-  DOF={id:d.id,D:{date:todayISO(),lorryReg:jobPlate(j),customerPo:j.po||"",items:[{desc:"",qty:""}],timeFrom:to24(j.time),timeTo:"",from:j.pickup||"",to:j.dropoff||"",rname:clean(j.supervisor),ric:"",iname:driverName(S.driverId)||driverName(j.driverId)||clean(j.operator)||(S.me&&S.me.name)||""}};
+  DOF={id:d.id,D:{date:todayISO(),lorryReg:jobPlate(j)||((drivers().find(x=>x.id===(curDriverId()||j.driverId))||{}).plate||""),customerPo:j.po||"",items:[{desc:"",qty:""}],timeFrom:to24(j.time),timeTo:"",from:j.pickup||"",to:j.dropoff||"",rname:clean(j.supervisor),ric:"",iname:driverName(curDriverId())||driverName(j.driverId)||clean(j.operator)||(S.me&&S.me.name)||""}};
   const D=DOF.D,f=(k,label,type,ph)=>`<div><label for="do-${k}">${label}</label><input id="do-${k}" type="${type||"text"}" data-dof="${k}" value="${esc(D[k])}" placeholder="${esc(ph||"")}"></div>`;
   $("#overlay").innerHTML=`<div class="dosheet" role="dialog" aria-modal="true" aria-label="Delivery Order"><div class="in">
    <div class="dotop"><button class="btn" data-act="doclose">← Kembali</button><b>Delivery Order</b><span class="mono">${esc(j.no)}</span></div>
@@ -890,7 +904,7 @@ ACT.dosubmit=async(d,btn)=>{
   const no=nextDoNo(),now=new Date().toISOString();
   const data=clone(j);
   data.do={no,date:D.date||todayISO(),lorryReg:D.lorryReg,customerPo:D.customerPo,items,timeFrom:D.timeFrom,timeTo:D.timeTo,from:D.from,to:D.to,
-    receiver:{name:String(D.rname).trim(),ic:String(D.ric).trim(),sig:DOF.r.toData(),signedAt:now},issuer:{name:String(D.iname).trim(),driverId:S.driverId||j.driverId||"",email:S.userName||"",sig:DOF.i.toData()},status:"signed",submittedAt:now};
+    receiver:{name:String(D.rname).trim(),ic:String(D.ric).trim(),sig:DOF.r.toData(),signedAt:now},issuer:{name:String(D.iname).trim(),driverId:curDriverId()||j.driverId||"",email:S.userName||"",sig:DOF.i.toData()},status:"signed",submittedAt:now};
   data.status="done";data.endDate=data.endDate||data.do.date;
   data.log=(data.log||[]).concat(logEntry(`DO ${no} ditandatangani oleh ${data.do.receiver.name}`));
   btn.disabled=true;btn.textContent="Menghantar…";
