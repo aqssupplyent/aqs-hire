@@ -220,7 +220,9 @@ select option{background:var(--surface);color:var(--ink)}
 @media (max-width:520px){
   .sheet{padding:16px}
   .fld,.fld.full{grid-template-columns:minmax(0,1fr);gap:0}
-  .who{display:none}
+  .who .em{display:none}
+  .who{opacity:1}
+  .who button{padding:6px 10px;font-size:13px;margin-left:0}
   .search{width:100%}
   .cp .right{margin-left:0;width:100%}
   .doc-no{font-size:24px}
@@ -1129,7 +1131,7 @@ if(!window.supabase||!CFG.SUPABASE_URL||/YOUR-PROJECT/.test(CFG.SUPABASE_URL)){
   $("#main").innerHTML=emptyBox("Sistem belum disambungkan","Isi SUPABASE_URL dan SUPABASE_ANON_KEY dalam fail config.js, kemudian muat semula halaman.");
 }else{
 const sb=window.supabase.createClient(CFG.SUPABASE_URL,CFG.SUPABASE_ANON_KEY);
-ACT.logout=async()=>{await sb.auth.signOut();location.hash="";location.reload()};
+ACT.logout=async()=>{writeDriverId("");await sb.auth.signOut();location.hash="";location.reload()};
 function loginView(mode,msg){
   $("#cp").innerHTML="";$("#nav").innerHTML="";$("#who").textContent="";
   const titles={login:["Log masuk","Masukkan e-mel dan kata laluan staf AQS Supply."],forgot:["Tetapkan semula kata laluan","Kami akan hantar pautan ke e-mel anda."],setpwd:["Tetapkan kata laluan","Pilih kata laluan untuk akaun anda (sekurang-kurangnya 8 aksara)."]};
@@ -1156,12 +1158,12 @@ async function start(session){
   if(started)return;started=true;
   if(/access_token|type=/.test(location.hash))history.replaceState(null,"",location.pathname+(NAV.some(x=>x[0]===hv)?"#"+hv:""));
   S.uid=session.user.id;S.userName=session.user.email;
-  $("#who").innerHTML=esc(S.userName)+`<button data-act="logout">Log keluar</button>`;
+  $("#who").innerHTML=`<span class="em">${esc(S.userName)}</span><button data-act="logout">Log keluar</button>`;
   S.db=makeDB(sb);
   S.sb=sb;
   try{const{data,error}=await sb.rpc("is_staff");if(!error&&data===false)S.canWrite=false}catch(e){}
   try{await loadStaff()}catch(e){}
-  if(S.isDriver){S.driverId=readDriverId();route.view="tugasan";route.id=null;S.loaded.add("invoices");$("#who").innerHTML=esc((S.me&&S.me.name)||S.userName)+`<button data-act="logout">Log keluar</button>`}
+  if(S.isDriver){S.driverId=readDriverId();route.view="tugasan";route.id=null;S.loaded.add("invoices");$("#who").innerHTML=`<span class="em">${esc((S.me&&S.me.name)||S.userName)}</span><button data-act="logout">Log keluar</button>`}
   render();
   const timer=setTimeout(()=>{if(!isLoaded()){S.offline=true;COLS.forEach(c=>S.loaded.add(c));render()}},10000);
   const onData=()=>{if(isLoaded())clearTimeout(timer);if(S.offline&&isLoaded())S.offline=false;
