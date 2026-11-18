@@ -30,3 +30,9 @@ delete from public.staff where email = 'staf@contoh.com';
 - `index.html`: keseluruhan aplikasi.
 - `config.js`: URL dan kunci awam Supabase.
 - `supabase/schema.sql`: jadual, polisi keselamatan (RLS) dan realtime.
+
+## Banyak syarikat
+Jalankan `supabase/003_multi_syarikat.sql` sekali. Selepas itu:
+- **Tetapan → Syarikat → Tambah Syarikat** untuk mencipta syarikat baharu (anda menjadi admin syarikat itu).
+- Buka syarikat itu, kemudian tambah akaun log masuk dan pemandu di **Tetapan** seperti biasa. Setiap syarikat ada data, tetapan dan logo sendiri.
+- Akaun yang ahli lebih dari satu syarikat memilih syarikat selepas log masuk (butang **Tukar Syarikat** di atas kanan).

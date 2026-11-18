@@ -306,7 +306,7 @@ html,body{margin:0}
   <div class="who" id="who"></div>
 </div></header>
 <div class="cp"><div class="in gut wrap" id="cp"></div></div>
-<main class="gut"><div class="wrap" id="main"><div class="empty"><h3>Memuatkan data…</h3><p>Rekod kerja, invois dan pelanggan AQS Supply akan dipaparkan di sini.</p></div></div></main>
+<main class="gut"><div class="wrap" id="main"><div class="empty"><h3>Memuatkan data…</h3><p>Rekod kerja, invois dan pelanggan akan dipaparkan di sini.</p></div></div></main>
 <div id="overlay"></div>
 
 <script>
@@ -326,7 +326,7 @@ const CATS=["Jentera Berat","Kenderaan","Tenaga Kerja","Peralatan","Lain-lain"];
 const METHODS=["Pindahan Bank","Tunai","Cek","DuitNow / FPX"];
 
 /* ---------- state ---------- */
-const S={driverId:"",staff:[],me:null,isDriver:false,sb:null,customers:[],assets:[],jobs:[],invoices:[],company:{},loaded:new Set(),db:null,user:null,uid:null,canWrite:true,names:{},offline:false,q:{},flt:{},jobFilter:null};
+const S={org:null,orgName:"",orgs:null,driverId:"",staff:[],me:null,isDriver:false,sb:null,customers:[],assets:[],jobs:[],invoices:[],company:{},loaded:new Set(),db:null,user:null,uid:null,canWrite:true,names:{},offline:false,q:{},flt:{},jobFilter:null};
 let route={view:"utama",id:null};
 let form=null; // {kind,id,data,dirty,isNew}
 const COLS=["customers","assets","jobs","invoices"];
@@ -349,6 +349,9 @@ function toast(msg){const t=document.createElement("div");t.className="toast";t.
 function nextNo(prefix,list,date){const y=(date||todayISO()).slice(0,4);const re=new RegExp("^"+prefix+"/"+y+"/(\\d+)$");let mx=0;list.forEach(x=>{const m=re.exec(x.no||"");if(m)mx=Math.max(mx,+m[1])});return prefix+"/"+y+"/"+String(mx+1).padStart(4,"0")}
 function nextInvNo(date){const yy=(date||todayISO()).slice(2,4);let mx=Math.max(0,n(S.company.invNext)-1);S.invoices.forEach(i=>{const m=/^INV-\d{2}(\d{5})$/.exec(i.no||"");if(m)mx=Math.max(mx,+m[1])});return "INV-"+yy+String(mx+1).padStart(5,"0")}
 function jobItems(j){const ls=(j.lines||[]).filter(l=>l.type!=="note");if(!ls.length)return"—";const t=ls.map(l=>(n(l.qty)!==1?n(l.qty)+" × ":"")+String(l.desc||(byId("assets",l.assetId)||{}).name||"").split("\n")[0]).join(", ");return t.length>48?t.slice(0,46)+"…":t}
+const orgLabel=()=>S.company.name||S.orgName||"AQS Supply Enterprise";
+const isAqs=()=>!S.org||S.org==="aqs";
+const defLogo=()=>isAqs()?(LOGO_DATA||DEFAULT_LOGO):"";
 const DEFAULT_LOGO=new URL("assets/logo-aqs.png",location.href).href;let LOGO_DATA=null;
 fetch(DEFAULT_LOGO).then(x=>x.ok?x.blob():null).then(b=>{if(!b)return;const fr=new FileReader();fr.onload=()=>{LOGO_DATA=fr.result};fr.readAsDataURL(b)}).catch(()=>{});
 const lineTotal=l=>l.type==="note"?0:n(l.qty)*n(l.dur)*n(l.rate);
@@ -433,7 +436,7 @@ VIEWS.utama=()=>{
   const cp=crumb([["Papan Pemuka"]])+`<div class="right"><button class="btn" data-act="jrpaste">Tampal Job Request</button><button class="btn pri" data-act="new" data-k="job">+ Rekod Kerja Baharu</button></div>`;
   let main="";
   if(isLoaded()&&!S.jobs.length&&!S.invoices.length&&!S.customers.length){
-    main+=emptyBox("Selamat Datang ke Sistem Sewaan AQS Supply","Mula dengan menambah pelanggan dan aset sewaan, kemudian cipta rekod kerja dan invois. Atau muatkan beberapa rekod contoh untuk melihat cara ia berfungsi; rekod contoh ditanda dan boleh dipadam sekali gus di Tetapan.",
+    main+=emptyBox("Selamat Datang ke Sistem Sewaan "+orgLabel(),"Mula dengan menambah pelanggan dan aset sewaan, kemudian cipta rekod kerja dan invois. Atau muatkan beberapa rekod contoh untuk melihat cara ia berfungsi; rekod contoh ditanda dan boleh dipadam sekali gus di Tetapan.",
       `<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><button class="btn pri" data-act="new" data-k="customer">Tambah Pelanggan</button><button class="btn" data-act="seed">Muatkan Data Contoh</button></div>`);
     return{cp,main};
   }
@@ -617,7 +620,7 @@ VIEWS.pelanggan=()=>{
   const rows=S.customers.filter(c=>match("pelanggan",[c.name,c.contact,c.phone,c.email,c.regNo].join(" "))).sort((a,b)=>(a.name||"").localeCompare(b.name||""));
   const cp=crumb([["Pelanggan"]])+`<div class="acts"><button class="btn pri" data-act="new" data-k="customer">Baharu</button></div><div class="right">${searchBox("pelanggan","Cari nama, telefon…")}</div>`;
   let main="";
-  if(!S.customers.length)main=emptyBox("Belum Ada Pelanggan","Tambah syarikat atau individu yang menyewa daripada AQS Supply.",`<button class="btn pri" data-act="new" data-k="customer">Tambah Pelanggan</button>`);
+  if(!S.customers.length)main=emptyBox("Belum Ada Pelanggan","Tambah syarikat atau individu yang menyewa daripada "+orgLabel()+".",`<button class="btn pri" data-act="new" data-k="customer">Tambah Pelanggan</button>`);
   else main=`<div class="tbl-wrap"><table><thead><tr><th>Nama</th><th>No. SSM</th><th>Orang Hubungan</th><th>Telefon</th><th class="r">Kerja</th><th class="r">Baki Tertunggak</th></tr></thead><tbody>${rows.map(c=>{const due=S.invoices.filter(i=>i.customerId===c.id).reduce((a,i)=>a+(i.status==="posted"?invCalc(i).due:0),0);return `<tr class="click" data-act="open" data-v="pelanggan" data-id="${c.id}"><td>${esc(c.name)}${exTag(c)}</td><td class="mono">${esc(c.regNo||"—")}</td><td>${esc(c.contact||"—")}</td><td class="num">${esc(c.phone||"—")}</td><td class="r num">${S.jobs.filter(j=>j.customerId===c.id).length}</td><td class="r num" style="${due>0?"color:var(--bad)":""}">${RM(due)}</td></tr>`}).join("")}</tbody></table></div>`;
   return{cp,main};
 };
@@ -665,12 +668,12 @@ function assetForm(){
 
 /* ---- Company settings ---- */
 VIEWS.syarikat=()=>{
-  if(!form||form.kind!=="company"){form={kind:"company",id:"company",data:Object.assign({name:"AQS Supply Enterprise",regNo:"",address:"",phone:"",email:"",sstNo:"",bank:"",bankAcc:"",bankHolder:"",defaultTax:0,terms:15,invNext:"",logo:"",footer:"This is computer generated invoice no signature required.",doNext:"",doPay:"C.O.D",doRemarks:"1) Trip package is within 5 hours.\n2) Day package is within 8 hours.\n3) Additional charges may apply for extra hours."},clone(S.company)),dirty:false}}
+  if(!form||form.kind!=="company"){form={kind:"company",id:"company",data:Object.assign({name:S.orgName||"AQS Supply Enterprise",regNo:"",address:"",phone:"",email:"",sstNo:"",bank:"",bankAcc:"",bankHolder:"",defaultTax:0,terms:15,invNext:"",logo:"",footer:"This is computer generated invoice no signature required.",doNext:"",doPay:"C.O.D",doRemarks:"1) Trip package is within 5 hours.\n2) Day package is within 8 hours.\n3) Additional charges may apply for extra hours."},clone(S.company)),dirty:false}}
   const F=form,ed=S.canWrite;const nEx=COLS.reduce((a,c)=>a+S[c].filter(x=>x.example).length,0);
   const cp=crumb([["Tetapan Syarikat"]])+`<div class="acts">${saveBtns(F)}</div>`;
   const ta=(k,label,rows,ph)=>`<div class="fld full"><label for="f-${k}">${label}</label><textarea id="f-${k}" data-f="${k}" rows="${rows}" placeholder="${esc(ph||"")}" ${ed?"":"disabled"}>${esc(F.data[k])}</textarea></div>`;
   const main=`<div class="sheet"><div class="sheet-head"><div class="doc-no"><small>Maklumat ini dicetak pada setiap invois</small>${esc(F.data.name||"Syarikat")}</div>
-    <div class="logo-pick"><img src="${esc(F.data.logo||DEFAULT_LOGO)}" alt="Logo syarikat">${F.data.logo?"":`<span>Logo lalai AQS</span>`}${ed?`<label class="btn sm" for="f-logo">Tukar Logo</label><input id="f-logo" type="file" accept="image/*" hidden>${F.data.logo?`<button class="btn sm" data-act="nologo">Guna Logo Lalai</button>`:""}`:""}</div></div>
+    <div class="logo-pick">${(F.data.logo||defLogo())?`<img src="${esc(F.data.logo||defLogo())}" alt="Logo syarikat">`:""}${F.data.logo?"":`<span>Logo lalai AQS</span>`}${ed?`<label class="btn sm" for="f-logo">Tukar Logo</label><input id="f-logo" type="file" accept="image/*" hidden>${F.data.logo?`<button class="btn sm" data-act="nologo">Guna Logo Lalai</button>`:""}`:""}</div></div>
    <div class="fields">
    ${fld("Nama Syarikat","name",F,ed,"text",'placeholder="AQS Supply Enterprise"')}${fld("No. Pendaftaran","regNo",F,ed,"text",'placeholder="LA0050422-A"')}${fld("Telefon / WhatsApp","phone",F,ed,"tel")}${fld("E-mel","email",F,ed,"email")}
    ${fld("Bank","bank",F,ed,"text",'placeholder="Maybank Berhad"')}${fld("No. Akaun Bank","bankAcc",F,ed)}${fld("Nama Pemegang Akaun","bankHolder",F,ed,"text",'placeholder="AQS Supply Ent"')}${fld("No. Pendaftaran SST","sstNo",F,ed,"text",'placeholder="kosongkan jika tiada"')}
@@ -683,6 +686,9 @@ VIEWS.syarikat=()=>{
    <div class="fld"><label for="f-doNext">No. DO Seterusnya</label><input id="f-doNext" type="number" min="1" data-f="doNext" value="${esc(F.data.doNext)}" placeholder="cth. 20164" ${ed?"":"disabled"}></div>
    ${ta("doRemarks","Remarks pada DO",3,"")}
   </div></div>
+  ${S.orgs?`<div class="sheet" style="margin-top:16px"><div class="sheet-head"><h2 class="sec">Syarikat</h2>${S.orgs.some(o=>o.role==="admin")?`<button class="btn sm pri" data-act="orgadd">Tambah Syarikat</button>`:""}</div>
+   <div class="tbl-wrap"><table><thead><tr><th>Nama</th><th>Kod</th><th>Peranan Anda</th><th></th></tr></thead><tbody>${S.orgs.map(o=>`<tr><td>${esc(o.name)}</td><td class="mono">${esc(o.id)}</td><td>${o.role==="driver"?`<span class="pill p-amber">Pemandu</span>`:`<span class="pill p-info">Admin</span>`}</td><td class="r">${o.id===S.org?`<span class="pill p-ok">Sedang Dibuka</span>`:`<button class="btn sm" data-act="pickorg" data-id="${esc(o.id)}">Buka</button>`}</td></tr>`).join("")}</tbody></table></div>
+   <p style="color:var(--muted);font-size:13px;margin:10px 0 0">Setiap syarikat ada data, tetapan, logo, pemandu dan akaun log masuk sendiri. Akaun yang ahli lebih dari satu syarikat akan memilih syarikat selepas log masuk.</p></div>`:""}
   <div class="sheet" style="margin-top:16px"><div class="sheet-head"><h2 class="sec">Pemandu</h2>${ed?`<button class="btn sm pri" data-act="drvadd">Tambah Pemandu</button>`:""}</div>
    <div class="tbl-wrap"><table><thead><tr><th>Nama</th><th>Telefon</th><th>No. Lori</th><th>Akaun log masuk</th><th class="r">Job aktif</th><th></th></tr></thead><tbody>${drivers().map(x=>`<tr><td>${esc(x.name)}</td><td class="num">${esc(x.phone||"—")}</td><td class="mono">${esc(x.plate||"—")}</td><td>${x.email?esc(x.email)+(S.staff.some(y=>String(y.email).toLowerCase()===String(x.email).toLowerCase())?"":` <span class="pill p-amber">belum didaftar</span>`):`<span style="color:var(--muted)">akaun bersama</span>`}</td><td class="r num">${S.jobs.filter(j=>j.driverId===x.id&&(j.status==="confirmed"||j.status==="ongoing")).length}</td><td class="r">${ed?`<button class="btn sm" data-act="drvedit" data-id="${esc(x.id)}">Ubah</button> <button class="btn sm warn" data-act="drvdel" data-id="${esc(x.id)}">Buang</button>`:""}</td></tr>`).join("")||`<tr><td colspan="6" style="color:var(--muted)">Belum ada pemandu. Tambah nama pemandu supaya mereka boleh memilih nama sendiri di telefon.</td></tr>`}</tbody></table></div>
    <p style="color:var(--muted);font-size:13px;margin:10px 0 0">Jika pemandu ada akaun log masuk sendiri (cth. vbe6317@aqssupply.com), isi di "Akaun log masuk": sistem terus kenal pemandu itu dan dia hanya nampak job sendiri. Akaun itu juga perlu dicipta di Supabase → Authentication → Users.</p></div>
@@ -929,11 +935,14 @@ const curDriverId=()=>{const b=boundDriver();return b?b.id:S.driverId};
 function readDriverId(){try{return localStorage.getItem("aqs-driver")||""}catch(e){return""}}
 function writeDriverId(v){try{v?localStorage.setItem("aqs-driver",v):localStorage.removeItem("aqs-driver")}catch(e){}}
 const staffName=email=>{if(!email)return"";const x=S.staff.find(y=>String(y.email).toLowerCase()===String(email).toLowerCase());return x?(x.name||x.email):email};
-async function loadStaff(){if(!S.sb)return;let res=await S.sb.from("staff").select("email,name,role");if(res.error)res=await S.sb.from("staff").select("email,name");S.staff=(res.data||[]).map(x=>Object.assign({role:"admin"},x));S.me=S.staff.find(x=>String(x.email).toLowerCase()===String(S.userName||"").toLowerCase())||null;S.isDriver=!!(S.me&&S.me.role==="driver")}
+const staffT=()=>S.org?"members":"staff";
+const staffRow=o=>S.org?Object.assign({org:S.org},o):o;
+const staffQ=q=>S.org?q.eq("org",S.org):q;
+async function loadStaff(){if(!S.sb)return;let res=await staffQ(S.sb.from(staffT()).select("email,name,role"));if(res.error&&!S.org)res=await S.sb.from("staff").select("email,name");S.staff=(res.data||[]).map(x=>Object.assign({role:"admin"},x));S.me=S.staff.find(x=>String(x.email).toLowerCase()===String(S.userName||"").toLowerCase())||null;S.isDriver=!!(S.me&&S.me.role==="driver")}
 ACT.staffadd=()=>modal("Tambah Akaun Log Masuk",`<div class="fld"><label for="s-name">Nama</label><input id="s-name" placeholder="cth. Pemandu AQS"></div><div class="fld"><label for="s-email">E-mel Log Masuk</label><input id="s-email" type="email" placeholder="cth. pemandu@aqssupply.com"></div><div class="fld"><label for="s-role">Peranan</label><select id="s-role"><option value="driver">Pemandu bersama (tugasan &amp; DO sahaja)</option><option value="admin">Admin (semua)</option></select></div><p style="color:var(--muted);font-size:13px">Selepas ini, cipta akaun log masuk untuk e-mel yang sama di Supabase → Authentication → Users.</p>`,"Tambah",async()=>{
   const email=$("#s-email").value.trim().toLowerCase(),name=$("#s-name").value.trim(),role=$("#s-role").value;
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){toast("Masukkan e-mel yang sah.");return false}
-  const{error}=await S.sb.from("staff").upsert({email,name,role});if(error){toast("Gagal menambah. Pastikan SQL 002 sudah dijalankan.");return false}
+  const{error}=await S.sb.from(staffT()).upsert(staffRow({email,name,role}));if(error){toast("Gagal menambah. Pastikan SQL 002 sudah dijalankan.");return false}
   await loadStaff();render();toast(name||email+" ditambah")});
 async function saveDrivers(list){const C=clone(S.company);C.drivers=list;try{await S.db.doc("config/company").set(C);S.company=C;if(form&&form.kind==="company")form.data.drivers=clone(list);render();return true}catch(e){handleWriteErr(e);return false}}
 function driverModal(x){
@@ -946,14 +955,21 @@ function driverModal(x){
     if(email&&drivers().some(y=>y.id!==x.id&&String(y.email||"").toLowerCase()===email)){toast("Akaun itu sudah dipautkan kepada pemandu lain.");return false}
     const rec={id:x.id||"d"+Date.now().toString(36),name,phone,plate,email};
     const list=x.id?drivers().map(y=>y.id===x.id?rec:y):drivers().concat(rec);
-    if(email){const{error}=await S.sb.from("staff").upsert({email,name,role:"driver"});if(error){toast("Akaun tidak dapat didaftarkan sebagai pemandu. Pastikan SQL 002 sudah dijalankan.");return false}}
-    const old=String(x.email||"").toLowerCase();if(old&&old!==email){await S.sb.from("staff").delete().eq("email",old).eq("role","driver")}
+    if(email){const{error}=await S.sb.from(staffT()).upsert(staffRow({email,name,role:"driver"}));if(error){toast("Akaun tidak dapat didaftarkan sebagai pemandu. Pastikan SQL 002 sudah dijalankan.");return false}}
+    const old=String(x.email||"").toLowerCase();if(old&&old!==email){await staffQ(S.sb.from(staffT()).delete().eq("email",old).eq("role","driver"))}
     const ok=await saveDrivers(list);if(!ok)return false;await loadStaff();render();toast(name+(x.id?" dikemas kini":" ditambah"))});
 }
 ACT.drvadd=()=>driverModal();
 ACT.drvedit=d=>driverModal(drivers().find(y=>y.id===d.id));
-ACT.drvdel=d=>{const x=drivers().find(y=>y.id===d.id)||{};modal("Buang Pemandu "+(x.name||"")+"?",`<p>Job lama dan DO yang sudah ditandatangani tidak terjejas.${x.email?" Akaun "+esc(x.email)+" tidak lagi boleh melihat data sistem.":""}</p>`,"Buang",async()=>{if(x.email){await S.sb.from("staff").delete().eq("email",String(x.email).toLowerCase()).eq("role","driver")}const ok=await saveDrivers(drivers().filter(y=>y.id!==d.id));if(!ok)return false;await loadStaff();render()},true)};
-ACT.staffdel=d=>modal("Buang "+d.email+"?","<p>Orang ini tidak lagi boleh melihat atau mengubah data sistem.</p>","Buang",async()=>{const{error}=await S.sb.from("staff").delete().eq("email",d.email);if(error){toast("Gagal membuang.");return false}await loadStaff();render()},true);
+ACT.drvdel=d=>{const x=drivers().find(y=>y.id===d.id)||{};modal("Buang Pemandu "+(x.name||"")+"?",`<p>Job lama dan DO yang sudah ditandatangani tidak terjejas.${x.email?" Akaun "+esc(x.email)+" tidak lagi boleh melihat data sistem.":""}</p>`,"Buang",async()=>{if(x.email){await staffQ(S.sb.from(staffT()).delete().eq("email",String(x.email).toLowerCase()).eq("role","driver"))}const ok=await saveDrivers(drivers().filter(y=>y.id!==d.id));if(!ok)return false;await loadStaff();render()},true)};
+ACT.orgadd=()=>modal("Tambah Syarikat",`<div class="fld"><label for="o-name">Nama Syarikat</label><input id="o-name" placeholder="cth. IM HYDRAULIC SDN BHD"></div><div class="fld"><label for="o-id">Kod Ringkas</label><input id="o-id" placeholder="cth. imh"></div><p style="color:var(--muted);font-size:13px">Kod ringkas: huruf kecil, nombor atau tanda sempang, 2 hingga 31 aksara. Kod tidak boleh ditukar kemudian.</p>`,"Tambah",async()=>{
+  const name=$("#o-name").value.trim().toUpperCase();let id=$("#o-id").value.trim().toLowerCase();
+  if(!name){toast("Isi nama syarikat.");return false}
+  if(!/^[a-z0-9][a-z0-9-]{1,30}$/.test(id)){toast("Kod ringkas tidak sah. Contoh: imh");return false}
+  const{error}=await S.sb.rpc("create_org",{p_id:id,p_name:name});
+  if(error){toast(/duplicate|unique/i.test(error.message||"")?"Kod itu sudah digunakan.":"Gagal menambah syarikat. Pastikan SQL 003 sudah dijalankan.");return false}
+  writeOrg(id);toast(name+" ditambah");setTimeout(()=>location.reload(),600)});
+ACT.staffdel=d=>modal("Buang "+d.email+"?","<p>Orang ini tidak lagi boleh melihat atau mengubah data sistem.</p>","Buang",async()=>{const{error}=await staffQ(S.sb.from(staffT()).delete().eq("email",d.email));if(error){toast("Gagal membuang.");return false}await loadStaff();render()},true);
 
 /* ---------- time helpers ---------- */
 function to24(t){const m=/(\d{1,2})[:.](\d{2})\s*([ap])?\.?m?/i.exec(t||"");if(!m)return"";let h=+m[1];const ap=(m[3]||"").toLowerCase();if(ap==="p"&&h<12)h+=12;if(ap==="a"&&h===12)h=0;return String(h).padStart(2,"0")+":"+m[2]}
@@ -986,7 +1002,7 @@ ACT.accept=async d=>{const j=byId("jobs",d.id);if(!j)return;const data=clone(j);
 
 /* ---------- Delivery Order capture ---------- */
 let DOF=null;
-function nextDoNo(){let mx=Math.max(0,(n(S.company.doNext)||20164)-1);S.jobs.forEach(j=>{if(j.do&&+j.do.no)mx=Math.max(mx,+j.do.no)});return String(mx+1)}
+function nextDoNo(){let mx=Math.max(0,(n(S.company.doNext)||(isAqs()?20164:1))-1);S.jobs.forEach(j=>{if(j.do&&+j.do.no)mx=Math.max(mx,+j.do.no)});return String(mx+1)}
 function jobPlate(j){for(const l of j.lines||[]){const a=byId("assets",l.assetId);if(a&&a.plate)return a.plate;const m=/\(([A-Z]{1,3}\s?\d{1,4}\s?[A-Z]?)\)/.exec(String(l.desc||"").toUpperCase());if(m)return m[1]}const m=/\b([A-Z]{1,3}\s?\d{1,4}\s?[A-Z]?)\b/.exec(String(j.vehicle||"").toUpperCase());return m?m[1]:""}
 function sigPad(canvas){
   const ctx=canvas.getContext("2d");let drawing=false,dirty=false,last=null;
@@ -1045,7 +1061,7 @@ ACT.dosubmit=async(d,btn)=>{
   btn.disabled=true;btn.textContent="Menghantar…";
   try{await save("jobs",DOF.id,data)}catch(e){btn.disabled=false;btn.textContent="Hantar DO";return}
   const phone=String(j.supervisor||"").replace(/\D/g,"").replace(/^0/,"60");
-  const msg=[`DELIVERY ORDER ${no}`,`M/S: ${custName(j.customerId)}`,`Tarikh: ${dmy(data.do.date)}`,data.do.lorryReg?`Lori: ${data.do.lorryReg}`:"",`Barang: ${items.map(x=>x.desc+(x.qty?" ("+x.qty+")":"")).join(", ")}`,(data.do.timeFrom||data.do.timeTo)?`Masa: ${[data.do.timeFrom,data.do.timeTo].filter(Boolean).map(fmt12).join(" - ")}`:"",data.do.from?`Dari: ${data.do.from}`:"",data.do.to?`Ke: ${data.do.to}`:"",`Diterima oleh: ${data.do.receiver.name}`,`— ${S.company.name||"AQS Supply Enterprise"}`].filter(Boolean).join("\n");
+  const msg=[`DELIVERY ORDER ${no}`,`M/S: ${custName(j.customerId)}`,`Tarikh: ${dmy(data.do.date)}`,data.do.lorryReg?`Lori: ${data.do.lorryReg}`:"",`Barang: ${items.map(x=>x.desc+(x.qty?" ("+x.qty+")":"")).join(", ")}`,(data.do.timeFrom||data.do.timeTo)?`Masa: ${[data.do.timeFrom,data.do.timeTo].filter(Boolean).map(fmt12).join(" - ")}`:"",data.do.from?`Dari: ${data.do.from}`:"",data.do.to?`Ke: ${data.do.to}`:"",`Diterima oleh: ${data.do.receiver.name}`,`— ${orgLabel()}`].filter(Boolean).join("\n");
   $(".dosheet .in").innerHTML=`<div class="dodone"><div class="tick" aria-hidden="true">✓</div><h2>DO ${esc(no)} dihantar</h2><p>Ditandatangani oleh ${esc(data.do.receiver.name)}. Admin kini boleh menyediakan invois.</p>
     <button class="btn pri" data-act="doprint" data-id="${esc(DOF.id)}">Lihat / Simpan PDF</button>
     <a class="btn" href="https://wa.me/${phone.length>=10?phone:""}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">Hantar ringkasan WhatsApp ke PIC</a>
@@ -1097,7 +1113,7 @@ function invoicePage(v){
   const pays=(v.payments||[]).map(p=>`<tr><td class="paid">Paid on ${dmy(p.date)}</td><td class="r paid">− ${money(p.amount)}</td></tr>`).join("");
   const termsDays=v.date&&v.dueDate?Math.round((new Date(v.dueDate)-new Date(v.date))/864e5):null;
   return `<div class="page invpage">
-<div class="hd"><img src="${esc(C.logo||LOGO_DATA||DEFAULT_LOGO)}" alt=""><div class="co"><b>${esc(C.name||"AQS Supply Enterprise")}${C.regNo?" ("+esc(C.regNo)+")":""}</b><span>${br(C.address)}</span><span class="ct">${C.phone?`H/P : ${esc(C.phone)}`:""}${C.phone&&C.email?`<i>|</i>`:""}${C.email?`Email : ${esc(C.email)}`:""}${C.sstNo?`<i>|</i>SST No : ${esc(C.sstNo)}`:""}</span></div><span class="sp"></span></div>
+<div class="hd">${(C.logo||defLogo())?`<img src="${esc(C.logo||defLogo())}" alt="">`:`<span></span>`}<div class="co"><b>${esc(C.name||orgLabel())}${C.regNo?" ("+esc(C.regNo)+")":""}</b><span>${br(C.address)}</span><span class="ct">${C.phone?`H/P : ${esc(C.phone)}`:""}${C.phone&&C.email?`<i>|</i>`:""}${C.email?`Email : ${esc(C.email)}`:""}${C.sstNo?`<i>|</i>SST No : ${esc(C.sstNo)}`:""}</span></div><span class="sp"></span></div>
 <h1>${title}</h1>
 <div class="meta"><div class="ms"><span>BILL TO :</span><div class="v">${esc(cu.name||"")}${cu.address?"<br>"+br(cu.address):""}${cu.regNo?`<br><small>TAX ID : ${esc(cu.regNo)}</small>`:""}</div></div>
 <table class="rt"><tr><td>INVOICE NO</td><td>:</td><td class="no">${esc(v.no||"—")}</td></tr><tr><td>DATE</td><td>:</td><td>${dmy(v.date)}</td></tr><tr><td>DUE DATE</td><td>:</td><td>${dmy(v.dueDate)}</td></tr>${v.ref?`<tr><td>REFERENCE</td><td>:</td><td>${esc(v.ref)}</td></tr>`:""}${termsDays!=null?`<tr><td>PAYMENT TERMS</td><td>:</td><td>${termsDays} DAYS</td></tr>`:""}</table></div>
@@ -1120,7 +1136,7 @@ function doPage(j){
   const remarks=String(C.doRemarks||"1) Trip package is within 5 hours.\n2) Day package is within 8 hours.\n3) Additional charges may apply for extra hours.");
   const t=[D.timeFrom,D.timeTo].filter(Boolean).map(fmt12).join(" - ");
   return `<div class="page dopage">
-<div class="hd"><img src="${esc(C.logo||LOGO_DATA||DEFAULT_LOGO)}" alt=""><div class="co"><b>${esc(C.name||"AQS Supply Enterprise")}${C.regNo?" ("+esc(C.regNo)+")":""}</b><span>${br(C.address)}</span><span class="ct">${C.phone?`H/P : ${esc(C.phone)}`:""}${C.phone&&C.email?`<i>|</i>`:""}${C.email?`Email : ${esc(C.email)}`:""}</span></div><span class="sp"></span></div>
+<div class="hd">${(C.logo||defLogo())?`<img src="${esc(C.logo||defLogo())}" alt="">`:`<span></span>`}<div class="co"><b>${esc(C.name||orgLabel())}${C.regNo?" ("+esc(C.regNo)+")":""}</b><span>${br(C.address)}</span><span class="ct">${C.phone?`H/P : ${esc(C.phone)}`:""}${C.phone&&C.email?`<i>|</i>`:""}${C.email?`Email : ${esc(C.email)}`:""}</span></div><span class="sp"></span></div>
 <h1>DELIVERY ORDER</h1>
 <div class="meta"><div class="ms"><span>M/S :</span><div class="v">${esc(cu.name||"")}${cu.address?"<br>"+br(cu.address):""}</div></div>
 <table class="rt"><tr><td>D.O. NO</td><td>:</td><td class="dono">${esc(D.no)}</td></tr><tr><td>DATE</td><td>:</td><td>${dmy(D.date)}</td></tr><tr><td>LORRY REG NO</td><td>:</td><td>${esc(D.lorryReg||"")}</td></tr><tr><td>CUSTOMER PO. NO.</td><td>:</td><td>${esc(D.customerPo||"")}</td></tr></table></div>
@@ -1247,23 +1263,24 @@ ACT.unseed=()=>modal("Padam Semua Data Contoh?","<p>Hanya rekod bertanda contoh 
 const TABLES={customers:1,assets:1,jobs:1,invoices:1,config:1};
 function mapErr(e){const c=e&&(e.code||"");if(c==="42501"||/row-level security|permission/i.test(e&&e.message||""))return{code:"invalid_argument",message:e.message};return{code:"unavailable",message:e&&e.message}}
 function makeDB(sb){
+  const scope=q=>S.org?q.eq("org",S.org):q;
   const loaders={};const refresh=t=>(loaders[t]||new Set()).forEach(f=>f());
   function docRef(table,id){
     if(!TABLES[table])throw new TypeError("unknown table "+table);
     return{id,path:table+"/"+id,
-      async set(data){const{error}=await sb.from(table).upsert({id,data,updated_by:S.userName||null,updated_at:new Date().toISOString()});if(error)throw mapErr(error);refresh(table)},
-      async update(patch){const{data:row,error:e1}=await sb.from(table).select("data").eq("id",id).maybeSingle();if(e1)throw mapErr(e1);if(!row)throw{code:"invalid_argument",message:"not found"};const{error}=await sb.from(table).update({data:Object.assign({},row.data,patch),updated_by:S.userName||null,updated_at:new Date().toISOString()}).eq("id",id);if(error)throw mapErr(error);refresh(table)},
-      async delete(){const{error}=await sb.from(table).delete().eq("id",id);if(error)throw mapErr(error);refresh(table)},
+      async set(data){const row={id,data,updated_by:S.userName||null,updated_at:new Date().toISOString()};if(S.org)row.org=S.org;const{error}=await sb.from(table).upsert(row,{onConflict:S.org?"org,id":"id"});if(error)throw mapErr(error);refresh(table)},
+      async update(patch){const{data:row,error:e1}=await scope(sb.from(table).select("data").eq("id",id)).maybeSingle();if(e1)throw mapErr(e1);if(!row)throw{code:"invalid_argument",message:"not found"};const{error}=await scope(sb.from(table).update({data:Object.assign({},row.data,patch),updated_by:S.userName||null,updated_at:new Date().toISOString()}).eq("id",id));if(error)throw mapErr(error);refresh(table)},
+      async delete(){const{error}=await scope(sb.from(table).delete().eq("id",id));if(error)throw mapErr(error);refresh(table)},
       onSnapshot(next,err){return watch(table,rows=>{const r=rows.find(x=>x.id===id);next({id,exists:!!r,data:()=>r?r.data:undefined,metadata:{fromCache:false,hasPendingWrites:false}})},err,id)}};
   }
   async function fetchAll(table,id){
-    let out=[],from=0;for(;;){let q=sb.from(table).select("id,data").range(from,from+999);if(id)q=q.eq("id",id);const{data,error}=await q;if(error)throw mapErr(error);out=out.concat(data);if(data.length<1000)break;from+=1000}return out;
+    let out=[],from=0;for(;;){let q=scope(sb.from(table).select("id,data")).range(from,from+999);if(id)q=q.eq("id",id);const{data,error}=await q;if(error)throw mapErr(error);out=out.concat(data);if(data.length<1000)break;from+=1000}return out;
   }
   function watch(table,cb,err,id){
     let t=null,alive=true;
     const load=async()=>{try{const rows=await fetchAll(table,id);if(alive)cb(rows)}catch(e){if(alive&&err)err(e)}};
     load();(loaders[table]=loaders[table]||new Set()).add(load);
-    const ch=sb.channel("rt-"+table+(id?"-"+id:"")+"-"+Math.random().toString(36).slice(2)).on("postgres_changes",{event:"*",schema:"public",table},()=>{clearTimeout(t);t=setTimeout(load,250)}).subscribe();
+    const ch=sb.channel("rt-"+table+(id?"-"+id:"")+"-"+Math.random().toString(36).slice(2)).on("postgres_changes",Object.assign({event:"*",schema:"public",table},S.org?{filter:"org=eq."+S.org}:{}),()=>{clearTimeout(t);t=setTimeout(load,250)}).subscribe();
     const iv=setInterval(()=>{if(document.visibilityState==="visible")load()},60000);
     document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")load()});
     return()=>{alive=false;loaders[table].delete(load);clearInterval(iv);sb.removeChannel(ch)};
@@ -1286,7 +1303,7 @@ const sb=window.supabase.createClient(CFG.SUPABASE_URL,CFG.SUPABASE_ANON_KEY);
 ACT.logout=async()=>{writeDriverId("");await sb.auth.signOut();location.hash="";location.reload()};
 function loginView(mode,msg){
   $("#cp").innerHTML="";$("#nav").innerHTML="";$("#who").textContent="";
-  const titles={login:["Log Masuk","Masukkan e-mel dan kata laluan staf AQS Supply."],forgot:["Tetapkan Semula Kata Laluan","Kami akan hantar pautan ke e-mel anda."],setpwd:["Tetapkan Kata Laluan","Pilih kata laluan untuk akaun anda (sekurang-kurangnya 8 aksara)."]};
+  const titles={login:["Log Masuk","Masukkan e-mel dan kata laluan akaun anda."],forgot:["Tetapkan Semula Kata Laluan","Kami akan hantar pautan ke e-mel anda."],setpwd:["Tetapkan Kata Laluan","Pilih kata laluan untuk akaun anda (sekurang-kurangnya 8 aksara)."]};
   const[h,p]=titles[mode];
   $("#main").innerHTML=`<form class="login" id="lf"><h1>${h}</h1><p>${p}</p>
    ${mode!=="setpwd"?`<label for="l-email">E-mel</label><input id="l-email" type="email" autocomplete="username" required>`:""}
@@ -1305,6 +1322,14 @@ function loginView(mode,msg){
     b.disabled=false};
   const first=f.querySelector("input");first&&first.focus();
 }
+function readOrg(){try{return localStorage.getItem("aqs-org")||""}catch(e){return""}}
+function writeOrg(v){try{v?localStorage.setItem("aqs-org",v):localStorage.removeItem("aqs-org")}catch(e){}}
+function orgPicker(){
+  $("#cp").innerHTML=`<div class="crumb"><span>Pilih Syarikat</span></div>`;$("#nav").innerHTML="";
+  $("#main").innerHTML=`<p style="color:var(--muted);margin:0 0 12px">Akaun ${esc(S.userName)} ialah ahli beberapa syarikat. Pilih syarikat untuk dibuka.</p><div class="drvpick">${S.orgs.map(o=>`<button class="btn" data-act="pickorg" data-id="${esc(o.id)}"><b>${esc(o.name)}</b><span>${o.role==="driver"?"Pemandu":"Admin"}</span></button>`).join("")}</div>`;
+}
+ACT.pickorg=d=>{writeOrg(d.id);location.reload()};
+ACT.switchorg=()=>{writeOrg("");location.reload()};
 let started=false;
 async function start(session){
   if(started)return;started=true;
@@ -1313,8 +1338,18 @@ async function start(session){
   $("#who").innerHTML=`<span class="em">${esc(S.userName)}</span><button data-act="logout">Log Keluar</button>`;
   S.db=makeDB(sb);
   S.sb=sb;
-  try{const{data,error}=await sb.rpc("is_staff");if(!error&&data===false)S.canWrite=false}catch(e){}
+  let multi=false;
+  try{const{data:mem,error}=await sb.from("members").select("org,role,name").eq("email",String(S.userName).toLowerCase());
+    if(!error){multi=true;const{data:orgs}=await sb.from("orgs").select("id,name");
+      S.orgs=(mem||[]).map(m=>({id:m.org,role:m.role,name:((orgs||[]).find(o=>o.id===m.org)||{}).name||m.org.toUpperCase()}));
+      if(!S.orgs.length)S.canWrite=false;
+      else{const saved=readOrg();const pick=S.orgs.find(o=>o.id===saved)||(S.orgs.length===1?S.orgs[0]:null);
+        if(!pick){orgPicker();return}
+        S.org=pick.id;S.orgName=pick.name;writeOrg(pick.id)}}}catch(e){}
+  if(!multi){try{const{data,error}=await sb.rpc("is_staff");if(!error&&data===false)S.canWrite=false}catch(e){}}
   try{await loadStaff()}catch(e){}
+  if(S.orgName){const bs=document.querySelector(".brand span");if(bs)bs.textContent=S.orgName}
+  if(S.orgs&&S.orgs.length>1)$("#who").insertAdjacentHTML("afterbegin",`<button data-act="switchorg" title="Tukar Syarikat">⇄ Tukar Syarikat</button>`);
   if(S.isDriver){S.driverId=readDriverId();route.view="tugasan";route.id=null;S.loaded.add("invoices");$("#who").innerHTML=`<span class="em">${esc((S.me&&S.me.name)||S.userName)}</span><button data-act="logout">Log Keluar</button>`}
   render();
   const timer=setTimeout(()=>{if(!isLoaded()){S.offline=true;COLS.forEach(c=>S.loaded.add(c));render()}},10000);
