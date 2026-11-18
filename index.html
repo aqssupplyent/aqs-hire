@@ -213,11 +213,60 @@ select option{background:var(--surface);color:var(--ink)}
 .modal .body .fld{grid-template-columns:120px minmax(0,1fr)}
 .modal footer{padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end}
 
-@media (max-width:860px){
+.menu-btn{display:none}
+@media (min-width:1600px){
+  .wrap{max-width:1400px}
+  .sheet,.chatter{max-width:1260px}
+}
+@media (max-width:1024px){
+  .grid2{grid-template-columns:minmax(0,1fr)}
+  .lines .cell{min-width:44px}
+  .lines .cell.w{min-width:170px}
+  .lines .cell.n{min-width:52px}
+  .lines select.cell{max-width:150px}
+  .lines td{padding:4px 5px}
+}
+@media (max-width:900px){
   .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .grid2,.fields{grid-template-columns:minmax(0,1fr)}
+  .fld{grid-template-columns:120px minmax(0,1fr)}
+}
+@media (max-width:720px){
+  .fields{grid-template-columns:minmax(0,1fr)}
+  /* app bar becomes a menu */
+  .appbar .in{overflow:visible;gap:10px;flex-wrap:wrap}
+  .menu-btn{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);color:var(--bar-ink);border-radius:6px;padding:6px 10px;font-weight:500;cursor:pointer}
+  .nav{display:none;order:9;width:100%;flex-direction:column;padding:4px 0 10px}
+  .appbar.open .nav{display:flex}
+  .nav a{padding:11px 10px;font-size:15px;opacity:.9}
+  .who{margin-left:auto}
+  /* lists become stacked cards */
+  table.stack thead{display:none}
+  table.stack,table.stack tbody,table.stack tfoot,table.stack tr,table.stack td{display:block;width:100%}
+  table.stack tbody tr{padding:10px 14px;border-bottom:1px solid var(--line)}
+  table.stack tbody tr:last-child{border-bottom:0}
+  table.stack td{border:0;padding:3px 0;white-space:normal;display:flex;justify-content:space-between;align-items:baseline;gap:14px;text-align:right;overflow-wrap:anywhere}
+  table.stack td::before{content:attr(data-label);color:var(--muted);font-size:12px;text-align:left;flex:none;max-width:45%}
+  table.stack td[data-label=""]::before{display:none}
+  table.stack td:first-child{font-weight:600;font-size:15px}
+  table.stack tfoot tr{display:flex;justify-content:space-between;padding:10px 14px}
+  table.stack tfoot td{width:auto;padding:0}
+  table.stack tfoot td:empty{display:none}
+  /* rental lines: label above each input */
+  .lines table.stack tbody tr{padding:10px 12px;position:relative}
+  .lines table.stack td{display:block;text-align:left;padding:4px 0}
+  .lines table.stack td::before{display:block;max-width:none;margin-bottom:2px}
+  .lines table.stack td:first-child{font-size:inherit}
+  .lines table.stack .cell,.lines table.stack .cell.w{min-width:0;width:100%}
+  .lines table.stack .cell.n{text-align:left}
+  .lines table.stack td:last-child:has(.xbtn){position:absolute;top:6px;right:8px;width:auto;padding:0}
+  .lines table.stack tr.noteline td:first-child{padding-right:28px}
+  .totals table{min-width:0;width:100%}
 }
 @media (max-width:520px){
+  .kpis{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+  .kpi{padding:10px 12px}.kpi .v{font-size:21px}
+  .cp .in{padding-block:10px}
+  .crumb{font-size:18px}
   .sheet{padding:16px}
   .fld,.fld.full{grid-template-columns:minmax(0,1fr);gap:0}
   .who .em{display:none}
@@ -246,8 +295,9 @@ html,body{margin:0}
 </head>
 <body>
 
-<header class="appbar"><div class="in gut">
+<header class="appbar" id="appbar"><div class="in gut">
   <div class="brand"><i>AQ</i>AQS Supply</div>
+  <button class="menu-btn" id="menu-btn" data-act="menu" aria-expanded="false" aria-controls="nav"><span aria-hidden="true">☰</span> <span id="menu-cur">Menu</span></button>
   <nav class="nav" id="nav"></nav>
   <div class="who" id="who"></div>
 </div></header>
@@ -339,8 +389,12 @@ function render(){
   const V=VIEWS[route.view]||VIEWS.utama;const out=V();
   $("#cp").innerHTML=out.cp;$("#main").innerHTML=(S.offline?`<div class="banner">Data belum dapat dicapai. Paparan mungkin tidak terkini.</div>`:"")+(!S.canWrite?`<div class="banner">Akaun anda belum didaftarkan sebagai staf, jadi rekod tidak boleh dilihat atau diubah. Minta pentadbir tambah e-mel anda dalam jadual staf.</div>`:"")+out.main;
   if(out.after)out.after();
+  document.querySelectorAll("#main table").forEach(t=>{const th=[...t.querySelectorAll(":scope>thead th")].map(x=>x.textContent.trim());if(!th.length)return;t.classList.add("stack");t.querySelectorAll(":scope>tbody>tr").forEach(tr=>{[...tr.children].forEach((td,i)=>{if(!td.hasAttribute("data-label"))td.setAttribute("data-label",td.colSpan>1?"":(th[i]||""))})})});
   document.querySelectorAll(".lines textarea").forEach(growTA);
+  const cur=navList().find(x=>x[0]===route.view);const mc=document.getElementById("menu-cur");if(mc)mc.textContent=cur?cur[1]:"Menu";
+  const ab=document.getElementById("appbar");if(ab){ab.classList.remove("open");const mb=document.getElementById("menu-btn");if(mb)mb.setAttribute("aria-expanded","false")}
 }
+addEventListener("resize",()=>{clearTimeout(window.__rz);window.__rz=setTimeout(()=>document.querySelectorAll(".lines textarea").forEach(growTA),120)});
 function growTA(t){t.style.height="auto";t.style.height=(t.scrollHeight+2)+"px"}
 function crumb(parts){return `<div class="crumb">${parts.map((p,i)=>i<parts.length-1?`<a data-act="crumb" data-v="${p[1]}">${esc(p[0])}</a><span class="sep">/</span>`:`<span>${p[0]}</span>`).join("")}</div>`}
 function steps(list,map,cur){return `<div class="steps">${list.map(k=>`<span class="${k===cur?"on":""}">${esc(map[k][0])}</span>`).join("")}</div>`}
@@ -654,6 +708,7 @@ document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id==="note"
 const ACT={};
 document.addEventListener("click",e=>{const a=e.target.closest("[data-act]");if(!a)return;const f=ACT[a.dataset.act];if(!f)return;e.preventDefault();f(a.dataset,a)});
 function guardDirty(){if(form&&form.dirty&&form.kind!=="company"){toast("Simpan atau buang perubahan dahulu.");return true}return false}
+ACT.menu=()=>{const ab=$("#appbar");const o=ab.classList.toggle("open");$("#menu-btn").setAttribute("aria-expanded",String(o))};
 ACT.nav=d=>{if(guardDirty())return;S.jobFilter=null;go(d.v)};
 ACT.nav2=d=>{if(guardDirty())return;S.jobFilter=null;go(d.v)};
 ACT.crumb=d=>{if(guardDirty())return;go(d.v)};
@@ -931,7 +986,7 @@ function doHTML(j){
   const rows=items.map((it,i)=>`<tr><td class="c">${i+1}.</td><td>${br(it.desc)}</td><td class="c">${esc(it.qty)}</td></tr>`).join("")+Array.from({length:Math.max(0,9-items.length)},()=>`<tr class="blank"><td></td><td></td><td></td></tr>`).join("");
   const remarks=String(C.doRemarks||"1) Trip package is within 5 hours.\n2) Day package is within 8 hours.\n3) Additional charges may apply for extra hours.");
   const t=[D.timeFrom,D.timeTo].filter(Boolean).map(fmt12).join(" - ");
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>DO ${esc(D.no)}</title>
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><script>(function(){function fit(){var p=document.querySelector(".page");if(!p)return;p.style.zoom="";p.style.margin="";var w=document.documentElement.clientWidth,s=Math.min(1,(w-12)/p.offsetWidth);if(s<1){p.style.zoom=s;p.style.margin="6px auto"}}addEventListener("resize",fit);addEventListener("load",fit);document.addEventListener("DOMContentLoaded",fit);setTimeout(fit,300);setTimeout(fit,1000);addEventListener("beforeprint",function(){var p=document.querySelector(".page");p.style.zoom="";p.style.margin=""});addEventListener("afterprint",fit)})()<\/script><title>DO ${esc(D.no)}</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
 <style>@page{size:A4;margin:0}*{box-sizing:border-box}html,body{margin:0;background:#e9ebee}
 body{font-family:Roboto,Arial,Helvetica,sans-serif;color:#1d1d1f;font-size:12.5px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -955,7 +1010,7 @@ table.dl td{padding:2mm 3mm;font-size:13px}table.dl td:first-child{width:42mm;wh
 .sig .ln{border-top:1px dotted #333;padding-top:1mm;font-size:12px}
 .sig .kv{display:grid;grid-template-columns:18mm 1fr;margin-top:2mm;font-size:12.5px}.sig .kv span:last-child{border-bottom:1px solid #333;color:#0d2f7a}
 .foot{margin-top:6mm;font-size:10.5px;color:#666;text-align:center}
-@media print{html,body{background:#fff}.page{margin:0}}</style></head><body><div class="page">
+@media print{html,body{background:#fff}.page{margin:0!important;zoom:1!important}}.tb{position:sticky;top:0;z-index:5;text-align:center;padding:8px;background:#e9ebee}.tb button{font:inherit;font-size:15px;padding:10px 18px;border-radius:6px;border:0;background:#1d5a6e;color:#fff;font-weight:600;cursor:pointer}@media print{.tb{display:none}}</style></head><body><div class="tb"><button type="button" onclick="window.print()">Cetak / Simpan PDF</button></div><div class="page">
 <div class="hd"><img src="${esc(C.logo||LOGO_DATA||DEFAULT_LOGO)}" alt=""><div class="co">${esc(C.name||"AQS Supply Enterprise")}${C.regNo?" ("+esc(C.regNo)+")":""}<br>${br(C.address)}</div></div>
 <div class="contact">${C.phone?`<span>H/P : ${esc(C.phone)}</span>`:""}${C.email?`<span>Email : ${esc(C.email)}</span>`:""}</div>
 <h1>DELIVERY ORDER</h1>
@@ -997,7 +1052,7 @@ function closeModal(){$("#overlay").innerHTML=""}
 /* ---------- downloads ---------- */
 async function getDL(){return{save:async({filename,data})=>{const type=filename.endsWith(".csv")?"text/csv;charset=utf-8":"text/html;charset=utf-8";const url=URL.createObjectURL(new Blob([data],{type}));const a=document.createElement("a");a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);return{status:"saved"}}}}
 ACT.printinv=()=>printHTML(invoiceHTML(form.data));
-function printHTML(html){const w=window.open("","_blank");if(!w){toast("Benarkan pop-up untuk mencetak.");return}w.document.write(html);w.document.close();w.focus();let k=0;const tryPrint=()=>{const imgs=[...w.document.images];if(k++<30&&(!w.document.fonts||w.document.fonts.status!=="loaded"||imgs.some(i=>!i.complete)))return setTimeout(tryPrint,150);w.print()};setTimeout(tryPrint,200)};
+function printHTML(html){const w=window.open("","_blank");if(!w){toast("Benarkan pop-up untuk mencetak.");return}w.document.write(html);if(window.innerWidth<820){w.document.close();return}w.document.close();w.focus();let k=0;const tryPrint=()=>{const imgs=[...w.document.images];if(k++<30&&(!w.document.fonts||w.document.fonts.status!=="loaded"||imgs.some(i=>!i.complete)))return setTimeout(tryPrint,150);w.print()};setTimeout(tryPrint,200)};
 function invoiceHTML(v){
   const C=S.company,cu=byId("customers",v.customerId)||{},c=invCalc(v);
   const money=x=>"RM "+rmFmt.format(n(x));const br=t=>esc(t||"").replace(/\n/g,"<br>");
@@ -1006,7 +1061,7 @@ function invoiceHTML(v){
     `<tr><td>${br(l.desc||(byId("assets",l.assetId)||{}).name||"")}</td><td class="r">${rmFmt.format(n(l.qty)*n(l.dur))}</td><td class="r">${rmFmt.format(n(l.rate))}</td><td class="r">${money(lineTotal(l))}</td></tr>`).join("");
   const pays=(v.payments||[]).map(p=>`<tr><td class="paid">Paid on ${dmy(p.date)}</td><td class="r paid">${money(p.amount)}</td></tr>`).join("");
   const termsDays=v.date&&v.dueDate?Math.round((new Date(v.dueDate)-new Date(v.date))/864e5):null;
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${v.no?esc(v.no):"Draft Invoice"}</title>
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><script>(function(){function fit(){var p=document.querySelector(".page");if(!p)return;p.style.zoom="";p.style.margin="";var w=document.documentElement.clientWidth,s=Math.min(1,(w-12)/p.offsetWidth);if(s<1){p.style.zoom=s;p.style.margin="6px auto"}}addEventListener("resize",fit);addEventListener("load",fit);document.addEventListener("DOMContentLoaded",fit);setTimeout(fit,300);setTimeout(fit,1000);addEventListener("beforeprint",function(){var p=document.querySelector(".page");p.style.zoom="";p.style.margin=""});addEventListener("afterprint",fit)})()<\/script><title>${v.no?esc(v.no):"Draft Invoice"}</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap">
 <style>
 @page{size:A4;margin:0}
@@ -1040,8 +1095,8 @@ table.t .due td{font-weight:700;border-top:1px solid #444}
 .paid{font-style:italic}
 .foot{position:absolute;left:12mm;right:12mm;bottom:12mm;border-top:1px solid #222;padding-top:6px;display:flex;justify-content:space-between;font-size:12px}
 .foot span:last-child{color:#666}
-@media print{html,body{background:#fff}.page{margin:0;min-height:297mm;page-break-after:always}}
-</style></head><body><div class="page">
+@media print{html,body{background:#fff}.page{margin:0!important;zoom:1!important;min-height:297mm;page-break-after:always}}
+.tb{position:sticky;top:0;z-index:5;text-align:center;padding:8px;background:#e9ebee}.tb button{font:inherit;font-size:15px;padding:10px 18px;border-radius:6px;border:0;background:#1d5a6e;color:#fff;font-weight:600;cursor:pointer}@media print{.tb{display:none}}</style></head><body><div class="tb"><button type="button" onclick="window.print()">Cetak / Simpan PDF</button></div><div class="page">
 <div class="band">
   <div class="logo"><img src="${esc(C.logo||LOGO_DATA||DEFAULT_LOGO)}" alt=""></div>
   <div class="co">${esc(C.name||"AQS Supply Enterprise")}${C.regNo?" ("+esc(C.regNo)+")":""}<br>${br(C.address)}${C.phone?"<br>Call &amp; WhatsApp : "+esc(C.phone):""}${C.email?"<br>Email : "+esc(C.email):""}${C.sstNo?"<br>SST No : "+esc(C.sstNo):""}</div>
