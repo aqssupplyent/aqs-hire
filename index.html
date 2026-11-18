@@ -720,12 +720,13 @@ ACT.unseed=()=>modal("Padam semua data contoh?","<p>Hanya rekod bertanda contoh 
 const TABLES={customers:1,assets:1,jobs:1,invoices:1,config:1};
 function mapErr(e){const c=e&&(e.code||"");if(c==="42501"||/row-level security|permission/i.test(e&&e.message||""))return{code:"invalid_argument",message:e.message};return{code:"unavailable",message:e&&e.message}}
 function makeDB(sb){
+  const loaders={};const refresh=t=>(loaders[t]||new Set()).forEach(f=>f());
   function docRef(table,id){
     if(!TABLES[table])throw new TypeError("unknown table "+table);
     return{id,path:table+"/"+id,
-      async set(data){const{error}=await sb.from(table).upsert({id,data,updated_by:S.userName||null,updated_at:new Date().toISOString()});if(error)throw mapErr(error)},
-      async update(patch){const{data:row,error:e1}=await sb.from(table).select("data").eq("id",id).maybeSingle();if(e1)throw mapErr(e1);if(!row)throw{code:"invalid_argument",message:"not found"};const{error}=await sb.from(table).update({data:Object.assign({},row.data,patch),updated_by:S.userName||null,updated_at:new Date().toISOString()}).eq("id",id);if(error)throw mapErr(error)},
-      async delete(){const{error}=await sb.from(table).delete().eq("id",id);if(error)throw mapErr(error)},
+      async set(data){const{error}=await sb.from(table).upsert({id,data,updated_by:S.userName||null,updated_at:new Date().toISOString()});if(error)throw mapErr(error);refresh(table)},
+      async update(patch){const{data:row,error:e1}=await sb.from(table).select("data").eq("id",id).maybeSingle();if(e1)throw mapErr(e1);if(!row)throw{code:"invalid_argument",message:"not found"};const{error}=await sb.from(table).update({data:Object.assign({},row.data,patch),updated_by:S.userName||null,updated_at:new Date().toISOString()}).eq("id",id);if(error)throw mapErr(error);refresh(table)},
+      async delete(){const{error}=await sb.from(table).delete().eq("id",id);if(error)throw mapErr(error);refresh(table)},
       onSnapshot(next,err){return watch(table,rows=>{const r=rows.find(x=>x.id===id);next({id,exists:!!r,data:()=>r?r.data:undefined,metadata:{fromCache:false,hasPendingWrites:false}})},err,id)}};
   }
   async function fetchAll(table,id){
@@ -734,11 +735,11 @@ function makeDB(sb){
   function watch(table,cb,err,id){
     let t=null,alive=true;
     const load=async()=>{try{const rows=await fetchAll(table,id);if(alive)cb(rows)}catch(e){if(alive&&err)err(e)}};
-    load();
+    load();(loaders[table]=loaders[table]||new Set()).add(load);
     const ch=sb.channel("rt-"+table+(id?"-"+id:"")+"-"+Math.random().toString(36).slice(2)).on("postgres_changes",{event:"*",schema:"public",table},()=>{clearTimeout(t);t=setTimeout(load,250)}).subscribe();
     const iv=setInterval(()=>{if(document.visibilityState==="visible")load()},60000);
     document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")load()});
-    return()=>{alive=false;clearInterval(iv);sb.removeChannel(ch)};
+    return()=>{alive=false;loaders[table].delete(load);clearInterval(iv);sb.removeChannel(ch)};
   }
   return{
     collection:c=>({path:c,doc:id=>docRef(c,id||(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2))),
