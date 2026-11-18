@@ -133,7 +133,7 @@ select option{background:var(--surface);color:var(--ink)}
 .lines{border:1px solid var(--line);border-top:0;overflow-x:auto}
 .lines td{padding:4px 8px;vertical-align:middle}
 .lines .cell{min-width:60px}
-.lines .cell.w{min-width:260px;resize:vertical;font:inherit;line-height:1.35}
+.lines .cell.w{min-width:340px;resize:vertical;font:inherit;line-height:1.35}
 .lines td{vertical-align:top}
 .pre{white-space:pre-line}
 .noteline td{font-style:italic;color:var(--muted);background:var(--sunk)}
@@ -172,7 +172,7 @@ select option{background:var(--surface);color:var(--ink)}
 
 /* modal */
 .scrim{position:fixed;inset:0;background:rgba(10,18,22,.5);z-index:40;display:grid;place-items:center;padding:16px}
-.modal{background:var(--surface);border-radius:8px;width:440px;max-width:100%;border:1px solid var(--line)}
+.modal{background:var(--surface);border-radius:8px;width:520px;max-height:calc(100vh - 32px);overflow:auto;max-width:100%;border:1px solid var(--line)}
 .modal header{padding:14px 18px;border-bottom:1px solid var(--line);font-family:var(--f-display);font-size:18px;font-weight:600}
 .modal .body{padding:14px 18px}
 .modal .body .fld{grid-template-columns:120px minmax(0,1fr)}
@@ -315,7 +315,7 @@ VIEWS.utama=()=>{
   const over=open.filter(x=>x.c.pay==="overdue");
   let collected=0;S.invoices.forEach(i=>(i.payments||[]).forEach(p=>{if((p.date||"").slice(0,7)===ym)collected+=n(p.amount)}));
   const toInvoice=S.jobs.filter(j=>(j.status==="done")&&!S.invoices.some(i=>i.jobId===j.id&&i.status!=="cancelled"));
-  const cp=crumb([["Papan Pemuka"]])+`<div class="right"><button class="btn pri" data-act="new" data-k="job">+ Rekod Kerja Baharu</button></div>`;
+  const cp=crumb([["Papan Pemuka"]])+`<div class="right"><button class="btn" data-act="jrpaste">Tampal Job Request</button><button class="btn pri" data-act="new" data-k="job">+ Rekod Kerja Baharu</button></div>`;
   let main="";
   if(isLoaded()&&!S.jobs.length&&!S.invoices.length&&!S.customers.length){
     main+=emptyBox("Selamat datang ke sistem sewaan AQS Supply","Mula dengan menambah pelanggan dan aset sewaan, kemudian cipta rekod kerja dan invois. Atau muatkan beberapa rekod contoh untuk melihat cara ia berfungsi; rekod contoh ditanda dan boleh dipadam sekali gus di Tetapan.",
@@ -340,13 +340,13 @@ VIEWS.utama=()=>{
 VIEWS.kerja=()=>{
   if(route.id)return jobForm();
   const f=S.flt.kerja||"all";
-  let rows=S.jobs.filter(j=>f==="all"||j.status===f).filter(j=>match("kerja",[j.no,custName(j.customerId),j.site,j.po].join(" ")));
+  let rows=S.jobs.filter(j=>f==="all"||j.status===f).filter(j=>match("kerja",[j.no,custName(j.customerId),j.site,j.po,j.pickup,j.dropoff,j.operator,j.supervisor].join(" ")));
   rows.sort((a,b)=>(b.no||"").localeCompare(a.no||""));
-  const cp=crumb([["Rekod Kerja"]])+`<div class="acts"><button class="btn pri" data-act="new" data-k="job">Baharu</button></div><div class="right">${searchBox("kerja","Cari no., pelanggan, tapak…")}</div>`;
+  const cp=crumb([["Rekod Kerja"]])+`<div class="acts"><button class="btn pri" data-act="new" data-k="job">Baharu</button><button class="btn" data-act="jrpaste">Tampal Job Request</button></div><div class="right">${searchBox("kerja","Cari no., pelanggan, tapak…")}</div>`;
   let main=chips("kerja",[["all","Semua"],...Object.entries(JOB_ST).map(([k,v])=>[k,v[0]])]);
   if(!S.jobs.length)main+=emptyBox("Belum ada rekod kerja","Satu rekod kerja mencatat siapa menyewa, aset atau pekerja yang dihantar, lokasi tapak dan tempoh. Dari sini anda cipta invois.",`<button class="btn pri" data-act="new" data-k="job">Cipta rekod kerja</button>`);
   else if(!rows.length)main+=emptyBox("Tiada padanan","Tukar penapis atau carian.");
-  else main+=`<div class="tbl-wrap"><table><thead><tr><th>No. Kerja</th><th>Pelanggan</th><th>Lokasi Tapak</th><th>Mula</th><th>Tamat</th><th class="r">Nilai</th><th>Invois</th><th>Status</th></tr></thead><tbody>${rows.map(j=>{const ni=S.invoices.filter(i=>i.jobId===j.id&&i.status!=="cancelled").length;return `<tr class="click" data-act="open" data-v="kerja" data-id="${j.id}"><td class="mono">${esc(j.no)}${exTag(j)}</td><td>${esc(custName(j.customerId))}</td><td>${esc(j.site||"—")}</td><td class="num">${dmy(j.startDate)}</td><td class="num">${dmy(j.endDate)}</td><td class="r num">${RM(linesSum(j.lines))}</td><td>${ni?`<span class="pill p-ok">${ni} invois</span>`:`<span class="pill p-grey">Belum</span>`}</td><td>${pill(JOB_ST[j.status]||JOB_ST.draft)}</td></tr>`}).join("")}</tbody><tfoot><tr><td colspan="5">${rows.length} rekod</td><td class="r num">${RM(rows.reduce((a,j)=>a+linesSum(j.lines),0))}</td><td colspan="2"></td></tr></tfoot></table></div>`;
+  else main+=`<div class="tbl-wrap"><table><thead><tr><th>No. Kerja</th><th>Pelanggan</th><th>Projek / Tapak</th><th>Mula</th><th>Tamat</th><th class="r">Nilai</th><th>Invois</th><th>Status</th></tr></thead><tbody>${rows.map(j=>{const ni=S.invoices.filter(i=>i.jobId===j.id&&i.status!=="cancelled").length;return `<tr class="click" data-act="open" data-v="kerja" data-id="${j.id}"><td class="mono">${esc(j.no)}${exTag(j)}</td><td>${esc(custName(j.customerId))}</td><td>${esc(j.site||"—")}</td><td class="num">${dmy(j.startDate)}</td><td class="num">${dmy(j.endDate)}</td><td class="r num">${RM(linesSum(j.lines))}</td><td>${ni?`<span class="pill p-ok">${ni} invois</span>`:`<span class="pill p-grey">Belum</span>`}</td><td>${pill(JOB_ST[j.status]||JOB_ST.draft)}</td></tr>`}).join("")}</tbody><tfoot><tr><td colspan="5">${rows.length} rekod</td><td class="r num">${RM(rows.reduce((a,j)=>a+linesSum(j.lines),0))}</td><td colspan="2"></td></tr></tfoot></table></div>`;
   return{cp,main};
 };
 
@@ -364,7 +364,7 @@ function linesTable(F,editable){
   return `<div class="tabs"><span>Butiran Sewaan</span></div><div class="lines"><table><thead><tr><th>Aset / Perkhidmatan</th><th>Keterangan</th><th class="r">Kuantiti</th><th class="r">Tempoh</th><th>Unit</th><th class="r">Kadar (RM)</th><th class="r">Jumlah</th>${editable?"<th></th>":""}</tr></thead><tbody>
   ${ls.map((l,i)=>l.type==="note"?(editable?`<tr class="noteline"><td colspan="7"><textarea class="cell w" rows="3" data-l="${i}" data-lf="desc" placeholder="cth.&#10;Load : Cable (2 drums)&#10;Time : 09.00 am - 05.00 pm&#10;Pic : En. Hasyinor">${esc(l.desc)}</textarea></td><td><button class="xbtn" title="Buang nota" aria-label="Buang nota" data-act="delline" data-i="${i}">×</button></td></tr>`:`<tr class="noteline"><td colspan="7" class="pre">${esc(l.desc)}</td></tr>`):editable?`<tr>
     <td><select class="cell" data-l="${i}" data-lf="assetId">${assetOpts(l.assetId)}</select></td>
-    <td><textarea class="cell w" rows="2" data-l="${i}" data-lf="desc" placeholder="cth. Rental of lorry crane (VBE 6317)&#10;(Site A - Site B)">${esc(l.desc)}</textarea></td>
+    <td><textarea class="cell w" rows="${Math.max(2,String(l.desc||"").split("\n").length)}" data-l="${i}" data-lf="desc" placeholder="cth. Rental of lorry crane (VBE 6317)&#10;(Site A - Site B)">${esc(l.desc)}</textarea></td>
     <td><input class="cell n" type="number" step="any" min="0" data-l="${i}" data-lf="qty" value="${esc(l.qty)}"></td>
     <td><input class="cell n" type="number" step="any" min="0" data-l="${i}" data-lf="dur" value="${esc(l.dur)}"></td>
     <td><select class="cell" data-l="${i}" data-lf="unit">${UNITS.map(u=>`<option ${u===l.unit?"selected":""}>${u}</option>`).join("")}</select></td>
@@ -413,10 +413,15 @@ function jobForm(){
     <div class="fields">
       <div class="fld"><label for="f-cust">Pelanggan</label>${custSelect(F,ed)}</div>
       ${fld("Tarikh Mula","startDate",F,ed,"date")}
-      ${fld("Lokasi Tapak","site",F,ed,"text",'placeholder="cth. Projek Jalan Kuantan–Gambang, Seksyen 3"')}
+      ${fld("Projek / Tapak","site",F,ed,"text",'placeholder="cth. MINI PPU JEMENTAH"')}
       ${fld("Tarikh Tamat","endDate",F,ed,"date")}
       ${fld("No. PO / Rujukan","po",F,ed,"text",'placeholder="PO pelanggan"')}
-      ${fld("Operator / PIC","operator",F,ed,"text",'placeholder="Nama operator atau penyelia"')}
+      ${fld("Masa","time",F,ed,"text",'placeholder="cth. 9:30 AM"')}
+      ${fld("Pickup","pickup",F,ed,"text",'placeholder="Lokasi ambil"')}
+      ${fld("Kenderaan","vehicle",F,ed,"text",'placeholder="cth. AQS ENTERPRISE (sewa) / VBE 6317"')}
+      ${fld("Dropoff","dropoff",F,ed,"text",'placeholder="Lokasi hantar"')}
+      ${fld("Pemandu / Operator","operator",F,ed,"text",'placeholder="Nama & no. telefon"')}
+      ${fld("SV Tapak / PIC","supervisor",F,ed,"text",'placeholder="Nama & no. telefon"')}
     </div>
     ${linesTable(F,ed)}
     <div class="totals"><table><tr class="big"><td>Jumlah Nilai Kerja</td><td class="r num" id="tot-sum">${RM(linesSum(d.lines))}</td></tr></table></div>
@@ -668,6 +673,59 @@ ACT.note=async()=>{
   const el=$("#note");if(!el)return;const v=el.value.trim();if(!v)return;if(!S.canWrite){toast("Anda hanya boleh melihat.");return}
   const col=COLMAP[form.kind];const log=(byId(col,form.id)||form.data).log||[];
   try{await S.db.collection(col).doc(form.id).update({log:log.concat(logEntry(v))});el.value="";if(!form.dirty)form=null;render()}catch(e){handleWriteErr(e)}
+};
+
+/* ---------- job request paste ---------- */
+function parseJR(text){
+  const out={qty:1,item:"",status:"draft",no:"",date:"",time:"",company:"",project:"",pickup:"",dropoff:"",vehicle:"",driver:"",supervisor:""};
+  const KEYS=[[/^(no\.?\s*job|job\s*no\.?|no\.?\s*kerja)$/,"no"],[/^(tarikh|date)$/,"date"],[/^(masa|time)$/,"time"],[/^(company|syarikat|client|pelanggan)$/,"company"],[/^(project|projek|site|tapak)$/,"project"],[/^(pickup|pick\s*up|ambil|dari)$/,"pickup"],[/^(drop\s*off|dropoff|hantar|ke)$/,"dropoff"],[/^(kenderaan|vehicle|lori|lorry)$/,"vehicle"],[/^(pemandu|driver|operator)$/,"driver"],[/^(sv\s*tapak|sv|supervisor|pic|penyelia)$/,"supervisor"]];
+  const lines=String(text||"").replace(/\r/g,"").split("\n").map(x=>x.replace(/[*_~]/g,"").trim()).filter(Boolean);
+  lines.forEach((ln,i)=>{
+    const m=/^([^:]{1,30}?)\s*:\s*(.*)$/.exec(ln);
+    if(m){const k=m[1].toLowerCase().replace(/\s+/g," ").trim();const hit=KEYS.find(([re])=>re.test(k));if(hit){out[hit[1]]=m[2].trim();return}}
+    if(!out.item&&i<3&&!m){const h=/^(\d+(?:\.\d+)?)?\s*(?:x\s+)?(.+?)(?:\s*[—–-]+\s*([A-Za-z ]+))?$/.exec(ln);if(h){out.qty=h[1]?n(h[1]):1;out.item=h[2].trim();const st=(h[3]||"").toLowerCase();if(/confirm|sah/.test(st))out.status="confirmed";else if(/cancel|batal/.test(st))out.status="cancelled"}}
+  });
+  const d=/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/.exec(out.date);
+  out.dateISO=d?((d[3].length===2?"20"+d[3]:d[3])+"-"+d[2].padStart(2,"0")+"-"+d[1].padStart(2,"0")):"";
+  return out;
+}
+const titleCase=t=>String(t||"").toLowerCase().replace(/(^|[\s(\/-])([a-z])/g,(m,a,b)=>a+b.toUpperCase());
+function findCustomer(name){const q=String(name||"").toLowerCase().replace(/sdn\.?\s*bhd\.?|\(m\)|[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim();if(!q)return null;
+  return S.customers.find(c=>(c.name||"").toLowerCase()===String(name).toLowerCase())||S.customers.find(c=>(c.name||"").toLowerCase().includes(q))||null}
+function findAsset(item,vehicle){const t=(item+" "+vehicle).toLowerCase();
+  return S.assets.find(a=>a.plate&&t.includes(a.plate.toLowerCase().replace(/\s+/g," ")))||S.assets.find(a=>a.name&&t.includes(a.name.toLowerCase()))||S.assets.find(a=>a.name&&item&&a.name.toLowerCase().includes(item.toLowerCase()))||null}
+function jrToJob(P){
+  const cust=findCustomer(P.company),asset=findAsset(P.item,P.vehicle);
+  const base=asset?asset.name:("Rental of "+P.item.toLowerCase());
+  const plate=asset&&asset.plate?" ("+asset.plate+")":"";
+  const route=P.pickup||P.dropoff?"\n("+[titleCase(P.pickup),titleCase(P.dropoff)].filter(Boolean).join(" - ")+")":"";
+  const lines=[{assetId:asset?asset.id:"",desc:base+plate+route,qty:P.qty||1,dur:1,unit:asset?asset.unit||"Trip":"Trip",rate:asset?n(asset.rate):0}];
+  const note=[P.time?"Time : "+P.time:"",P.supervisor?"Pic : "+P.supervisor:""].filter(Boolean).join("\n");
+  if(note)lines.push({type:"note",desc:note});
+  return{cust,asset,job:{no:P.no||nextNo("JOB",S.jobs),customerId:cust?cust.id:"",site:P.project,po:"",time:P.time,pickup:P.pickup,dropoff:P.dropoff,vehicle:P.vehicle,operator:P.driver,supervisor:P.supervisor,startDate:P.dateISO||todayISO(),endDate:"",status:P.status==="cancelled"?"draft":P.status,lines,notes:"",source:"job-request",log:[logEntry("Dicipta daripada Job Request"+(P.no?" "+P.no:""))],createdAt:new Date().toISOString()}};
+}
+ACT.jrpaste=()=>{
+  if(guardDirty())return;if(!S.canWrite){toast("Anda hanya boleh melihat.");return}
+  modal("Tampal Job Request",`<p style="margin:0 0 8px;color:var(--muted)">Tampal mesej job request (contohnya dari WhatsApp). Semak hasilnya di bawah sebelum mencipta rekod.</p>
+   <textarea id="jr-text" rows="9" style="width:100%;border:1px solid var(--line);border-radius:6px;padding:8px;background:var(--sunk);font:inherit;font-size:13px" placeholder="1 LORRY CRANE — CONFIRMED&#10;&#10;No. Job : JR-0181&#10;Tarikh : 16/11/2026&#10;Masa : 9:30 AM&#10;Company : AKLI&#10;..."></textarea>
+   <div id="jr-prev" style="margin-top:10px;font-size:13px"></div>`,"Cipta Rekod Kerja",async()=>{
+    const P=parseJR($("#jr-text").value);
+    if(!P.item&&!P.company&&!P.no){toast("Mesej tidak dapat dibaca. Pastikan ada baris seperti 'Company : ...'.");return false}
+    const dup=P.no&&S.jobs.find(j=>j.no===P.no);if(dup){toast(P.no+" sudah ada dalam sistem.");closeModal();go("kerja",dup.id);return false}
+    const R=jrToJob(P);
+    try{
+      if(!R.cust&&P.company){const cid=newId("customers");await save("customers",cid,{name:P.company,regNo:"",contact:"",phone:"",email:"",address:"",log:[]});R.job.customerId=cid}
+      const id=newId("jobs");await save("jobs",id,R.job);closeModal();go("kerja",id);toast("Rekod kerja "+R.job.no+" dicipta");
+    }catch(e){}
+    return false;
+  });
+  const ta=$("#jr-text");const prev=()=>{const P=parseJR(ta.value);if(!ta.value.trim()){$("#jr-prev").innerHTML="";return}const R=jrToJob(P);
+    const row=(k,v,warn)=>`<tr><td style="color:var(--muted);padding:2px 10px 2px 0;white-space:nowrap">${k}</td><td style="padding:2px 0;white-space:normal${warn?";color:var(--amber)":""}">${v}</td></tr>`;
+    $("#jr-prev").innerHTML=`<table style="width:100%">${row("No. Job",esc(P.no||"(auto) "+R.job.no))}${row("Status",esc(JOB_ST[R.job.status][0]))}${row("Tarikh",esc(dmy(R.job.startDate))+(P.time?" · "+esc(P.time):""))}
+     ${row("Pelanggan",R.cust?esc(R.cust.name):P.company?esc(P.company)+" (pelanggan baharu)":"— tiada —",!R.cust)}${row("Projek",esc(P.project||"—"))}${row("Pickup",esc(P.pickup||"—"))}${row("Dropoff",esc(P.dropoff||"—"))}
+     ${row("Kenderaan",esc(P.vehicle||"—"))}${row("Pemandu",esc(P.driver||"—"))}${row("SV Tapak",esc(P.supervisor||"—"))}
+     ${row("Item",esc((P.qty||1)+" × "+(P.item||"—"))+(R.asset?" → "+esc(R.asset.name)+" @ "+RM(R.asset.rate):" (tiada aset sepadan, kadar RM 0)"),!R.asset)}</table>`};
+  ta.addEventListener("input",prev);ta.focus();
 };
 
 /* ---------- modal ---------- */
