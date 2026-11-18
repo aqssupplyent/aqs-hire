@@ -137,6 +137,9 @@ select option{background:var(--surface);color:var(--ink)}
 .lines .cell.w{min-width:340px;resize:none;overflow:hidden;font:inherit;line-height:1.35}
 .lines td{vertical-align:top}
 .pre{white-space:pre-line}
+.dchips{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.dchips button{border:1px solid var(--line);background:var(--sunk);border-radius:99px;padding:2px 9px;font-size:12px;cursor:pointer;color:var(--muted)}
+.dchips button:hover{color:var(--primary);border-color:var(--primary)}
 .noteline td{font-style:italic;color:var(--muted);background:var(--sunk)}
 .lines .cell.n{text-align:right;min-width:70px}
 .addline{color:var(--primary);background:none;border:0;cursor:pointer;padding:8px;font-weight:500}
@@ -464,7 +467,7 @@ function linesTable(F,editable){
   return `<div class="tabs"><span>Butiran Sewaan</span></div><div class="lines"><table><thead><tr><th>Aset / Perkhidmatan</th><th>Keterangan</th><th class="r">Kuantiti</th><th class="r">Tempoh</th><th>Unit</th>${P?`<th class="r">Kadar (RM)</th><th class="r">Jumlah</th>`:""}${editable?"<th></th>":""}</tr></thead><tbody>
   ${ls.map((l,i)=>l.type==="note"?(editable?`<tr class="noteline"><td colspan="${span}"><textarea class="cell w" rows="3" data-l="${i}" data-lf="desc" placeholder="cth.&#10;Load : Cable (2 drums)&#10;Time : 09.00 am - 05.00 pm&#10;Pic : En. Hasyinor">${esc(l.desc)}</textarea></td><td><button class="xbtn" title="Buang nota" aria-label="Buang nota" data-act="delline" data-i="${i}">×</button></td></tr>`:`<tr class="noteline"><td colspan="${span}" class="pre">${esc(l.desc)}</td></tr>`):editable?`<tr>
     <td><select class="cell" data-l="${i}" data-lf="assetId">${assetOpts(l.assetId)}</select></td>
-    <td><textarea class="cell w" rows="${Math.max(2,String(l.desc||"").split("\n").length)}" data-l="${i}" data-lf="desc" placeholder="cth. Rental of lorry crane (VBE 6317)&#10;(Site A - Site B)">${esc(l.desc)}</textarea></td>
+    <td><textarea class="cell w" rows="${Math.max(2,String(l.desc||"").split("\n").length)}" data-l="${i}" data-lf="desc" placeholder="cth. Rental of lorry crane (VBE 6317)&#10;(Site A - Site B)">${esc(l.desc)}</textarea><div class="dchips"><button type="button" data-act="descadd" data-i="${i}" data-t="*stay at site">+ Stay at site</button><button type="button" data-act="descadd" data-i="${i}" data-t="*trip">+ Trip</button>${l.assetId?`<button type="button" data-act="descreset" data-i="${i}" title="Tulis semula dari aset dan lokasi">↻ Semula</button>`:""}</div></td>
     <td><input class="cell n" type="number" step="any" min="0" data-l="${i}" data-lf="qty" value="${esc(l.qty)}"></td>
     <td><input class="cell n" type="number" step="any" min="0" data-l="${i}" data-lf="dur" value="${esc(l.dur)}"></td>
     <td><select class="cell" data-l="${i}" data-lf="unit">${UNITS.map(u=>`<option ${u===l.unit?"selected":""}>${u}</option>`).join("")}</select></td>
@@ -699,7 +702,7 @@ document.addEventListener("input",e=>{
 document.addEventListener("change",e=>{
   const t=e.target;if(!form)return;
   if(t.id==="f-logo"&&t.files&&t.files[0]){const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,320/Math.max(im.width,im.height));const c=document.createElement("canvas");c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext("2d").drawImage(im,0,0,c.width,c.height);form.data.logo=c.toDataURL("image/png");form.dirty=true;render()};im.onerror=()=>toast("Fail itu bukan gambar yang sah.");im.src=fr.result};fr.readAsDataURL(t.files[0]);return}
-  if(t.dataset.lf==="assetId"){const l=form.data.lines[+t.dataset.l];const a=byId("assets",t.value);if(a){l.desc=l.desc||(a.name+(a.plate?" ("+a.plate+")":""));l.unit=a.unit||l.unit;if(form.kind==="invoice")l.rate=n(a.rate)}render();return}
+  if(t.dataset.lf==="assetId"){const l=form.data.lines[+t.dataset.l];l.assetId=t.value;form.dirty=true;const a=byId("assets",t.value);if(a){l.desc=buildDesc(a,lineContext(),l.desc);l.unit=a.unit||l.unit;if(form.kind==="invoice")l.rate=n(a.rate)}render();return}
   if(t.dataset.f==="driverId"&&form.kind==="job"){applyDriver(form.data,drivers().find(x=>x.id===t.value));form.dirty=true;render();return}
   if(t.dataset.f==="customerId"&&form.kind==="invoice"){const j=byId("jobs",form.data.jobId);if(j&&j.customerId!==t.value)form.data.jobId="";render();return}
   if(t.dataset.f==="jobId"&&form.kind==="invoice"){const j=byId("jobs",t.value);if(j&&!form.data.customerId)form.data.customerId=j.customerId;render();return}
@@ -723,6 +726,8 @@ ACT.jobinvs=()=>{if(guardDirty())return;S.jobFilter=form.id;S.flt.invois="all";g
 ACT.new=d=>{if(guardDirty())return;if(!S.canWrite){toast("Anda hanya boleh melihat.");return}const v={job:"kerja",invoice:"invois",customer:"pelanggan",asset:"aset"}[d.k];go(v,"new")};
 ACT.addline=()=>{form.data.lines.push(blankLine());form.dirty=true;render()};
 ACT.nologo=()=>{form.data.logo="";form.dirty=true;render()};
+ACT.descadd=d=>{const l=form.data.lines[+d.i];const cur=String(l.desc||"");if(cur.split("\n").some(x=>x.trim().toLowerCase()===d.t))return;l.desc=cur?cur+"\n"+d.t:d.t;form.dirty=true;render()};
+ACT.descreset=d=>{const l=form.data.lines[+d.i];l.desc=buildDesc(byId("assets",l.assetId),lineContext(),l.desc);form.dirty=true;render()};
 ACT.addnote=()=>{form.data.lines.push({type:"note",desc:""});form.dirty=true;render()};
 ACT.delline=d=>{form.data.lines.splice(+d.i,1);form.dirty=true;render()};
 ACT.discard=()=>{if(form.isNew){const v=route.view;form=null;go(v)}else{form=null;render()}};
@@ -817,6 +822,17 @@ function parseJR(text){
   out.dateISO=d?((d[3].length===2?"20"+d[3]:d[3])+"-"+d[2].padStart(2,"0")+"-"+d[1].padStart(2,"0")):"";
   return out;
 }
+function assetDesc(a,fallbackItem){
+  const nm=String(a?a.name:fallbackItem||"").trim();if(!nm)return"";
+  const base=/^rental\b/i.test(nm)?nm.charAt(0).toUpperCase()+nm.slice(1).toLowerCase():"Rental of "+nm.toLowerCase();
+  return base+(a&&a.plate?" ("+a.plate+")":"");
+}
+function routeText(pickup,dropoff){return pickup||dropoff?"("+[titleCase(pickup),titleCase(dropoff)].filter(Boolean).join(" - ")+")":""}
+function lineContext(){if(!form)return{};if(form.kind==="job")return form.data;const j=byId("jobs",form.data.jobId);return j||{}}
+function buildDesc(a,ctx,oldDesc){
+  const extras=String(oldDesc||"").split("\n").filter(x=>/^\s*\*/.test(x));
+  return [assetDesc(a),routeText(ctx.pickup,ctx.dropoff)].concat(extras).filter(Boolean).join("\n");
+}
 const titleCase=t=>String(t||"").toLowerCase().replace(/(^|[\s(\/-])([a-z])/g,(m,a,b)=>a+b.toUpperCase());
 function findCustomer(name){const q=String(name||"").toLowerCase().replace(/sdn\.?\s*bhd\.?|\(m\)|[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim();if(!q)return null;
   return S.customers.find(c=>(c.name||"").toLowerCase()===String(name).toLowerCase())||S.customers.find(c=>(c.name||"").toLowerCase().includes(q))||null}
@@ -825,9 +841,8 @@ function findAsset(item,vehicle){const t=(item+" "+vehicle).toLowerCase();
 function jrToJob(P){const R=jrToJob0(P);if(R.job.driverId)applyDriver(R.job,drivers().find(x=>x.id===R.job.driverId));return R}
 function jrToJob0(P){
   const cust=findCustomer(P.company),asset=findAsset(P.item,P.vehicle);
-  const base=asset?asset.name:("Rental of "+P.item.toLowerCase());
-  const plate=asset&&asset.plate?" ("+asset.plate+")":"";
-  const route=P.pickup||P.dropoff?"\n("+[titleCase(P.pickup),titleCase(P.dropoff)].filter(Boolean).join(" - ")+")":"";
+  const base=assetDesc(asset,P.item),plate="";
+  const route=P.pickup||P.dropoff?"\n"+routeText(P.pickup,P.dropoff):"";
   const lines=[{assetId:asset?asset.id:"",desc:base+plate+route,qty:P.qty||1,dur:1,unit:asset?asset.unit||"Trip":"Trip",rate:0}];
   const note=[P.load?"Load : "+P.load:"",P.time?"Time : "+P.time:"",P.supervisor?"Pic : "+P.supervisor:""].filter(Boolean).join("\n");
   if(note)lines.push({type:"note",desc:note});
@@ -868,6 +883,10 @@ function applyDriver(d,drv){
   let v=String(d.vehicle||"");plates.forEach(p=>{v=v.split(" / "+p).join("").split(p).join("")});v=v.replace(/\s*\/\s*$/,"").trim();
   d.vehicle=drv.plate?(v?v+" / "+drv.plate:drv.plate):v;
   d.operator=drv.name+(drv.phone?" ("+drv.phone+")":"");
+  const norm=x=>String(x||"").toUpperCase().replace(/\s+/g,"");
+  const mine=drv.plate?S.assets.find(a=>a.plate&&norm(a.plate)===norm(drv.plate)):null;
+  if(mine)(d.lines||[]).forEach(l=>{if(l.type==="note")return;const cur=byId("assets",l.assetId);
+    if((!l.assetId||(cur&&cur.plate&&norm(cur.plate)!==norm(mine.plate)))&&(!cur||String(cur.name).toLowerCase()===String(mine.name).toLowerCase()||!l.assetId)){l.assetId=mine.id;l.unit=mine.unit||l.unit;l.desc=buildDesc(mine,d,l.desc)}});
   return d;
 }
 const boundDriver=()=>{const me=String(S.userName||"").toLowerCase();return me?drivers().find(x=>x.email&&String(x.email).toLowerCase()===me)||null:null};
