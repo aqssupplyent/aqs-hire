@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>AQS Supply Hire</title>
-<link rel="icon" href="assets/logo-aqs.png">
+<link rel="icon" id="favicon" href="assets/logo-aqs.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
@@ -45,6 +45,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .appbar .in{display:flex;align-items:center;gap:20px;min-height:48px;overflow-x:auto;scrollbar-width:none}
 .brand{display:flex;align-items:center;gap:8px;font-family:var(--f-display);font-weight:700;font-size:20px;letter-spacing:.02em;white-space:nowrap;color:#fff}
 .brand i{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:5px;background:var(--amber);color:#1a1205;font-style:normal;font-size:13px}
+.brand i.navy{background:#1c3a6e;color:#f2c230;box-shadow:inset 0 0 0 1px #f2c230}
 .nav{display:flex;gap:2px}
 .nav a{color:var(--bar-ink);text-decoration:none;padding:6px 10px;border-radius:5px;white-space:nowrap;opacity:.82}
 .nav a:hover{opacity:1;background:rgba(255,255,255,.07)}
@@ -1394,6 +1395,14 @@ function orgPicker(){
 }
 ACT.pickorg=d=>{writeOrg(d.id);location.reload()};
 ACT.switchorg=()=>{writeOrg("");location.reload()};
+function orgInitials(name){const w=String(name||"").toUpperCase().replace(/[^A-Z0-9 ]/g," ").trim().split(/\s+/).filter(Boolean);if(!w.length)return"AQ";return (/^[A-Z]{2,}/.test(w[0])?w[0].slice(0,2):(w[0][0]+(w[1]?w[1][0]:""))).slice(0,2)}
+function applyBrand(){
+  const nm=S.orgName||S.company.name||"AQS Supply";
+  const bs=document.querySelector(".brand span");if(bs)bs.textContent=nm;
+  const bi=document.querySelector(".brand i");if(bi){bi.textContent=orgInitials(nm);bi.classList.toggle("navy",invTemplate()==="navy")}
+  document.title=nm+" Hire";
+  const fav=document.getElementById("favicon"),u=logoUrl();if(fav&&u)fav.href=u;
+}
 let started=false;
 async function start(session){
   if(started)return;started=true;
@@ -1413,7 +1422,7 @@ async function start(session){
   if(!multi){try{const{data,error}=await sb.rpc("is_staff");if(!error&&data===false)S.canWrite=false}catch(e){}}
   try{await loadStaff()}catch(e){}
   loadOrgLogo();
-  if(S.orgName){const bs=document.querySelector(".brand span");if(bs)bs.textContent=S.orgName}
+  if(S.orgName)applyBrand();
   if(S.orgs&&S.orgs.length>1)$("#who").insertAdjacentHTML("afterbegin",`<button data-act="switchorg" title="Tukar Syarikat">⇄ Tukar Syarikat</button>`);
   if(S.isDriver){S.driverId=readDriverId();route.view="tugasan";route.id=null;S.loaded.add("invoices");$("#who").innerHTML=`<span class="em">${esc((S.me&&S.me.name)||S.userName)}</span><button data-act="logout">Log Keluar</button>`}
   render();
@@ -1432,7 +1441,7 @@ async function start(session){
     S.db.collection(c).onSnapshot(snap=>{S[c]=snap.docs.map(d=>Object.assign({id:d.id},d.data()));S.loaded.add(c);onData()},
       err=>{S.loaded.add(c);S.offline=true;onData()});
   });
-  S.db.doc("config/company").onSnapshot(s=>{S.company=s.exists?s.data():{};onData()},()=>{});
+  S.db.doc("config/company").onSnapshot(s=>{S.company=s.exists?s.data():{};if(S.org)applyBrand();onData()},()=>{});
 }
 sb.auth.onAuthStateChange((ev,session)=>{
   if(ev==="PASSWORD_RECOVERY"){loginView("setpwd");return}
