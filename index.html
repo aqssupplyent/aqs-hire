@@ -194,9 +194,15 @@ select option{background:var(--surface);color:var(--ink)}
 .dobox h3{font-family:var(--f-display);font-size:16px;margin:0 0 6px}
 .dohead{display:flex;justify-content:space-between;gap:12px;margin-bottom:6px}.dohead small{display:block;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.06em}.dohead b{font-size:16px}
 .dof label,.dobox>label{display:block;font-weight:600;font-size:13px;margin:10px 0 4px}
-.dof input,.doitem textarea,.doitem input{width:100%;border:1px solid var(--line);border-radius:6px;padding:10px;background:var(--sunk);font-size:16px}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}.two>div{min-width:0}
-.doitem{display:grid;grid-template-columns:22px minmax(0,1fr) 120px auto;gap:8px;align-items:start;margin-bottom:8px}.doitem .dn{padding-top:10px;color:var(--muted)}
+.dof input,.doitem textarea,.doitem input{display:block;width:100%;min-width:0;max-width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:6px;padding:10px 12px;background:var(--sunk);font-size:16px;line-height:1.4;color:var(--ink);font-family:inherit}
+.dosheet input[type=date],.dosheet input[type=time]{-webkit-appearance:none;appearance:none;min-height:46px;text-align:left}
+.dosheet input::-webkit-date-and-time-value{text-align:left}
+.dosheet input::-webkit-datetime-edit{padding:0}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 10px}.two>div{min-width:0}
+.doitem{border:1px solid var(--line);border-radius:8px;padding:10px 12px 12px;margin-bottom:10px;background:var(--bg)}
+.doitem .dih{display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;font-size:14px}
+.doitem label{display:block;font-weight:600;font-size:13px;margin:8px 0 4px;color:var(--muted)}
+.doitem textarea{resize:none;overflow:hidden;min-height:48px}
 .donote{font-size:13px;color:var(--muted);margin:0 0 4px}
 .sig{width:100%;height:180px;border:2px dashed var(--muted);border-radius:8px;background:#fff;touch-action:none;display:block;cursor:crosshair}
 .sig.signed{border-style:solid;border-color:var(--primary)}
@@ -209,7 +215,7 @@ select option{background:var(--surface);color:var(--ink)}
 .dosum small{display:block;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}.dosum span{display:block;font-size:13px}
 .dosum img{height:44px;background:#fff;border-radius:4px;padding:2px}
 @media (max-width:460px){.brand span{display:none}}
-@media (max-width:520px){.doitem{grid-template-columns:22px minmax(0,1fr) auto}.doitem input{grid-column:2}}
+
 /* modal */
 .scrim{position:fixed;inset:0;background:rgba(10,18,22,.5);z-index:40;display:grid;place-items:center;padding:16px}
 .modal{background:var(--surface);border-radius:8px;width:520px;max-height:calc(100vh - 32px);overflow:auto;max-width:100%;border:1px solid var(--line)}
@@ -721,7 +727,7 @@ function refreshTotals(){
 document.addEventListener("input",e=>{
   const t=e.target;
   if(t.dataset.dof&&DOF){DOF.D[t.dataset.dof]=t.value;return}
-  if(t.dataset.di&&DOF){DOF.D.items[+t.dataset.di][t.dataset.dk]=t.value;return}
+  if(t.dataset.di&&DOF){DOF.D.items[+t.dataset.di][t.dataset.dk]=t.value;if(t.tagName==="TEXTAREA")growTA(t);return}
   if(t.dataset.q){S.q[t.dataset.q]=t.value;const pos=t.selectionStart;render();const el=document.getElementById("q-"+t.dataset.q);if(el){el.focus();try{el.setSelectionRange(pos,pos)}catch(_){}}return}
   if(!form)return;
   if(t.dataset.f){const k=t.dataset.f;form.data[k]=t.type==="checkbox"?t.checked:(t.type==="number"?(t.value===""?"":n(t.value)):t.value);markDirty();refreshTotals();return}
@@ -1048,7 +1054,10 @@ function loadItems(load){
   const U="(?:drums?|rolls?|units?|pcs|pieces?|nos?|tan|tons?|tonnes?|lots?|bundles?|pallets?|sets?|batang|keping|kotak|boxes?|bags?|beg|trips?|lori|loads?)";
   return parts.map(x=>{const m=new RegExp("^(\\d+(?:\\.\\d+)?\\s*"+U+")\\s+(.+)$","i").exec(x);return m?{qty:m[1].toUpperCase(),desc:m[2]}:{desc:x,qty:""}});
 }
-function doItemsHTML(){return DOF.D.items.map((it,i)=>`<div class="doitem"><span class="dn">${i+1}.</span><textarea rows="2" data-di="${i}" data-dk="desc" placeholder="cth. Kabel (stay site sampai siap)">${esc(it.desc)}</textarea><input data-di="${i}" data-dk="qty" value="${esc(it.qty)}" placeholder="Kuantiti, cth. 2 Drum">${DOF.D.items.length>1?`<button class="xbtn" aria-label="Buang barang" data-act="dodelitem" data-i="${i}">×</button>`:""}</div>`).join("")}
+function doItemsHTML(){return DOF.D.items.map((it,i)=>`<div class="doitem"><div class="dih"><b>Barang ${i+1}</b>${DOF.D.items.length>1?`<button class="btn sm warn" type="button" data-act="dodelitem" data-i="${i}">Buang</button>`:""}</div>
+  <label for="di-d-${i}">Keterangan</label><textarea id="di-d-${i}" rows="2" data-di="${i}" data-dk="desc" placeholder="cth. Kabel (stay site sampai siap)">${esc(it.desc)}</textarea>
+  <label for="di-q-${i}">Kuantiti</label><input id="di-q-${i}" data-di="${i}" data-dk="qty" value="${esc(it.qty)}" placeholder="cth. 3 DRUM"></div>`).join("")}
+function growDO(){document.querySelectorAll(".doitem textarea").forEach(growTA)}
 ACT.dofill=d=>{
   const j=byId("jobs",d.id);if(!j)return;
   const clean=t=>String(t||"").replace(/\(.*?\)/g,"").trim();
@@ -1067,7 +1076,7 @@ ACT.dofill=d=>{
     <label>Tandatangan Pemandu</label><canvas class="sig" id="sig-i" aria-label="Kotak tandatangan pemandu"></canvas><div class="sigbar"><span>Tandatangan dengan jari dalam kotak</span><button class="btn sm" data-act="sigclear" data-k="i">Padam</button></div></section>
    <button class="btn pri dosubmit" data-act="dosubmit">Hantar DO</button>
   </div></div>`;
-  DOF.r=sigPad($("#sig-r"));DOF.i=sigPad($("#sig-i"));
+  DOF.r=sigPad($("#sig-r"));DOF.i=sigPad($("#sig-i"));growDO();
 };
 function randToken(){const a=new Uint8Array(24);crypto.getRandomValues(a);return btoa(String.fromCharCode.apply(null,a)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")}
 ACT.vendorlink=async d=>{
@@ -1087,8 +1096,8 @@ ACT.vendorlink=async d=>{
    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn" type="button" id="vl-copy">Salin Pautan</button><a class="btn pri" style="text-decoration:none" href="https://wa.me/${phone.length>=10?phone:""}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">Hantar Melalui WhatsApp</a></div>`,"Tutup",async()=>{});
   const cb=$("#vl-copy");if(cb)cb.onclick=async()=>{try{await navigator.clipboard.writeText(link);toast("Pautan disalin")}catch(e){const i=$("#vl-link");i.select();toast("Tekan lama untuk salin")}};
 };
-ACT.doadditem=()=>{DOF.D.items.push({desc:"",qty:""});$("#do-items").innerHTML=doItemsHTML()};
-ACT.dodelitem=d=>{DOF.D.items.splice(+d.i,1);$("#do-items").innerHTML=doItemsHTML()};
+ACT.doadditem=()=>{DOF.D.items.push({desc:"",qty:""});$("#do-items").innerHTML=doItemsHTML();growDO();const t=document.getElementById("di-d-"+(DOF.D.items.length-1));if(t)t.focus()};
+ACT.dodelitem=d=>{DOF.D.items.splice(+d.i,1);$("#do-items").innerHTML=doItemsHTML();growDO()};
 ACT.sigclear=d=>{DOF[d.k].clear()};
 ACT.doclose=()=>{DOF=null;closeModal();if(S.vendorToken){vendorHome();return}render()};
 ACT.dosubmit=async(d,btn)=>{
