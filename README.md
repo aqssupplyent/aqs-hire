@@ -36,3 +36,6 @@ Jalankan `supabase/003_multi_syarikat.sql` sekali. Selepas itu:
 - **Tetapan → Syarikat → Tambah Syarikat** untuk mencipta syarikat baharu (anda menjadi admin syarikat itu).
 - Buka syarikat itu, kemudian tambah akaun log masuk dan pemandu di **Tetapan** seperti biasa. Setiap syarikat ada data, tetapan dan logo sendiri.
 - Akaun yang ahli lebih dari satu syarikat memilih syarikat selepas log masuk (butang **Tukar Syarikat** di atas kanan).
+
+## DO vendor
+Jalankan `supabase/004_do_vendor.sql` sekali. Dalam rekod kerja pilih **Kenderaan Oleh: Lori Vendor**, isi butiran vendor, Simpan, kemudian tekan **Pautan DO Vendor** dan hantar pautan melalui WhatsApp. Pemandu vendor isi DO tanpa log masuk; pautan sah untuk satu DO dan tamat dalam 7 hari.

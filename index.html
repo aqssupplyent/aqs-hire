@@ -370,7 +370,7 @@ function logEntry(msg){return{t:new Date().toISOString(),uid:S.uid||null,by:S.us
 /* ---------- db ---------- */
 /* Letter-case rules: names, places, loads and codes in CAPITALS; e-mail in lower case;
    invoice line descriptions keep their sentence case. */
-const CASE_UP={customers:["name","regNo","address","contact"],assets:["code","name","plate"],jobs:["no","site","po","pickup","dropoff","load","branch","vehicle","operator","supervisor"],invoices:["no","ref"]};
+const CASE_UP={customers:["name","regNo","address","contact"],assets:["code","name","plate"],jobs:["no","site","po","pickup","dropoff","load","branch","vehicle","operator","supervisor","vendorName","vendorPlate","vendorDriver"],invoices:["no","ref"]};
 const CASE_LOW={customers:["email"]};
 function normCase(col,b){
   const up=v=>typeof v==="string"?v.trim().replace(/[ \t]+/g," ").toUpperCase():v;
@@ -528,6 +528,7 @@ function jobForm(){
     if(["confirmed","ongoing","done"].includes(st))acts+=`<button class="btn ${st==="done"?"pri":""}" data-act="mkinv">Cipta Invois</button>`;
     if(st!=="cancelled"&&st!=="done")acts+=`<button class="btn warn" data-act="jobst" data-k="cancelled">Batal</button>`;
     if((st==="confirmed"||st==="ongoing")&&!(d.do&&d.do.status==="signed"))acts+=`<button class="btn" data-act="dofill" data-id="${F.id}">Isi DO</button>`;
+    if(d.fleet==="vendor"&&(st==="confirmed"||st==="ongoing")&&!(d.do&&d.do.status==="signed"))acts+=`<button class="btn pri" data-act="vendorlink" data-id="${F.id}">Pautan DO Vendor</button>`;
     if(d.do&&d.do.status==="signed")acts+=`<button class="btn" data-act="doprint" data-id="${F.id}">Cetak DO ${esc(d.do.no)}</button>`;
     if(st==="cancelled"||st==="done")acts+=`<button class="btn" data-act="jobst" data-k="draft">Tetap Semula ke Draf</button>`;
     if(st==="draft"||st==="cancelled")acts+=`<button class="btn warn" data-act="del" data-k="jobs">Padam</button>`;
@@ -549,7 +550,9 @@ function jobForm(){
       ${fld("Kenderaan","vehicle",F,ed,"text",'placeholder="cth. AQS ENTERPRISE (sewa) / VBE 6317"')}
       ${fld("Dropoff","dropoff",F,ed,"text",'placeholder="Lokasi hantar"')}
       ${fld("Pemandu / Operator","operator",F,ed,"text",'placeholder="Nama & no. telefon"')}
-      <div class="fld"><label for="f-driverId">Pemandu Ditugaskan</label>${ed?`<select id="f-driverId" data-f="driverId"><option value="">— pilih pemandu —</option>${drivers().map(x=>`<option value="${esc(x.id)}" ${x.id===d.driverId?"selected":""}>${esc(x.name)}${x.plate?" · "+esc(x.plate):""}</option>`).join("")}</select>`:`<div class="ro">${esc(jobDriverName(d)||"—")}</div>`}</div>
+      <div class="fld"><label for="f-fleet">Kenderaan Oleh</label>${ed?`<select id="f-fleet" data-f="fleet"><option value="own" ${d.fleet!=="vendor"?"selected":""}>Lori Sendiri</option><option value="vendor" ${d.fleet==="vendor"?"selected":""}>Lori Vendor</option></select>`:`<div class="ro">${d.fleet==="vendor"?"Lori Vendor":"Lori Sendiri"}</div>`}</div>
+      ${d.fleet==="vendor"?`${fld("Nama Vendor","vendorName",F,ed,"text",'placeholder="cth. XYZ TRANSPORT"')}${fld("No. Lori Vendor","vendorPlate",F,ed,"text",'placeholder="cth. WXY 1234"')}${fld("Pemandu Vendor","vendorDriver",F,ed,"text",'placeholder="Nama pemandu"')}${fld("Telefon Pemandu Vendor","vendorPhone",F,ed,"tel",'placeholder="cth. 012-345 6789"')}`:""}
+      ${d.fleet==="vendor"?"":`<div class="fld"><label for="f-driverId">Pemandu Ditugaskan</label>${ed?`<select id="f-driverId" data-f="driverId"><option value="">— pilih pemandu —</option>${drivers().map(x=>`<option value="${esc(x.id)}" ${x.id===d.driverId?"selected":""}>${esc(x.name)}${x.plate?" · "+esc(x.plate):""}</option>`).join("")}</select>`:`<div class="ro">${esc(jobDriverName(d)||"—")}</div>`}</div>`}
       ${fld("SV Tapak / PIC","supervisor",F,ed,"text",'placeholder="Nama & no. telefon"')}
     </div>
     ${doSummary(d,F.id)}
@@ -730,6 +733,8 @@ document.addEventListener("change",e=>{
   if(t.dataset.lf==="assetId"){const l=form.data.lines[+t.dataset.l];l.assetId=t.value;form.dirty=true;const a=byId("assets",t.value);if(a){l.desc=buildDesc(a,lineContext(),l.desc);l.unit=a.unit||l.unit;if(form.kind==="invoice")l.rate=n(a.rate)}render();return}
   if(form.kind==="job"&&["load","time","supervisor"].includes(t.dataset.f)){if(syncNote(form.data)){form.dirty=true;render()}return}
   if(form.kind==="job"&&["pickup","dropoff"].includes(t.dataset.f)){if(syncRoutes(form.data)){form.dirty=true;render()}return}
+  if(form.kind==="job"&&t.dataset.f==="fleet"){if(t.value==="vendor"){form.data.driverId=""}form.dirty=true;render();return}
+  if(form.kind==="job"&&["vendorName","vendorPlate","vendorDriver","vendorPhone"].includes(t.dataset.f)){const d=form.data;d.vehicle=[d.vendorName,d.vendorPlate].filter(Boolean).join(" / ").toUpperCase();d.operator=(String(d.vendorDriver||"").toUpperCase()+(d.vendorPhone?" ("+d.vendorPhone+")":"")).trim();form.dirty=true;render();return}
   if(t.dataset.f==="driverId"&&form.kind==="job"){applyDriver(form.data,drivers().find(x=>x.id===t.value));form.dirty=true;render();return}
   if(t.dataset.f==="customerId"&&form.kind==="invoice"){const j=byId("jobs",form.data.jobId);if(j&&j.customerId!==t.value)form.data.jobId="";render();return}
   if(t.dataset.f==="jobId"&&form.kind==="invoice"){const j=byId("jobs",t.value);if(j&&!form.data.customerId)form.data.customerId=j.customerId;render();return}
@@ -1031,7 +1036,8 @@ function doItemsHTML(){return DOF.D.items.map((it,i)=>`<div class="doitem"><span
 ACT.dofill=d=>{
   const j=byId("jobs",d.id);if(!j)return;
   const clean=t=>String(t||"").replace(/\(.*?\)/g,"").trim();
-  DOF={id:d.id,D:{date:todayISO(),lorryReg:jobPlate(j)||((drivers().find(x=>x.id===(curDriverId()||j.driverId))||{}).plate||""),customerPo:j.po||"",items:loadItems(j.load),timeFrom:to24(j.time),timeTo:"",from:j.pickup||"",to:j.dropoff||"",rname:clean(j.supervisor),ric:"",iname:driverName(curDriverId())||driverName(j.driverId)||clean(j.operator)||(S.me&&S.me.name)||""}};
+  const vend=j.fleet==="vendor"||!!S.vendorToken;
+  DOF={id:d.id,D:{date:todayISO(),lorryReg:(vend&&j.vendorPlate)||jobPlate(j)||((drivers().find(x=>x.id===(curDriverId()||j.driverId))||{}).plate||""),customerPo:j.po||"",items:loadItems(j.load),timeFrom:to24(j.time),timeTo:"",from:j.pickup||"",to:j.dropoff||"",rname:clean(j.supervisor),ric:"",iname:(vend&&j.vendorDriver)||driverName(curDriverId())||driverName(j.driverId)||clean(j.operator)||(S.me&&S.me.name)||""}};
   const D=DOF.D,f=(k,label,type,ph)=>`<div><label for="do-${k}">${label}</label><input id="do-${k}" type="${type||"text"}" data-dof="${k}" value="${esc(D[k])}" placeholder="${esc(ph||"")}"></div>`;
   $("#overlay").innerHTML=`<div class="dosheet" role="dialog" aria-modal="true" aria-label="Delivery Order"><div class="in">
    <div class="dotop"><button class="btn" data-act="doclose">← Kembali</button><b>Delivery Order</b><span class="mono">${esc(j.no)}</span></div>
@@ -1047,10 +1053,28 @@ ACT.dofill=d=>{
   </div></div>`;
   DOF.r=sigPad($("#sig-r"));DOF.i=sigPad($("#sig-i"));
 };
+function randToken(){const a=new Uint8Array(24);crypto.getRandomValues(a);return btoa(String.fromCharCode.apply(null,a)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")}
+ACT.vendorlink=async d=>{
+  if(form&&form.dirty){toast("Simpan rekod kerja dahulu.");return}
+  const j=byId("jobs",d.id);if(!j||!S.sb)return;
+  if(!j.vendorDriver){toast("Isi nama Pemandu Vendor dahulu, kemudian Simpan.");return}
+  const token=randToken();
+  const exp=new Date(Date.now()+7*864e5).toISOString();
+  const{error}=await S.sb.from("do_links").insert({token,org:S.org||"aqs",job_id:j.id,created_by:S.userName||null,expires_at:exp});
+  if(error){toast("Pautan tidak dapat dicipta. Pastikan SQL 004 sudah dijalankan.");return}
+  try{await S.db.collection("jobs").doc(j.id).update({log:(j.log||[]).concat(logEntry("Pautan DO vendor dihantar kepada "+j.vendorDriver+(j.vendorName?" ("+j.vendorName+")":"")))})}catch(e){}
+  const link=location.origin+location.pathname+"?do="+token;
+  const phone=String(j.vendorPhone||"").replace(/\D/g,"").replace(/^0/,"60");
+  const msg=`Salam ${j.vendorDriver}. Job ${j.no} untuk ${custName(j.customerId)}\nPickup: ${j.pickup||"-"}\nDropoff: ${j.dropoff||"-"}\nTarikh: ${dmy(j.startDate)}${j.time?" "+j.time:""}\n\nBila kerja siap, buka pautan ini untuk isi DO dan dapatkan tandatangan PIC tapak:\n${link}\n\n— ${orgLabel()}`;
+  modal("Pautan DO Vendor",`<p style="margin:0 0 8px">Hantar pautan ini kepada <b>${esc(j.vendorDriver)}</b>${j.vendorName?" ("+esc(j.vendorName)+")":""}. Pautan hanya untuk job <b>${esc(j.no)}</b>, boleh digunakan sekali, dan tamat dalam 7 hari.</p>
+   <input id="vl-link" readonly value="${esc(link)}" style="width:100%;border:1px solid var(--line);border-radius:6px;padding:8px;background:var(--sunk);font-size:13px">
+   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn" type="button" id="vl-copy">Salin Pautan</button><a class="btn pri" style="text-decoration:none" href="https://wa.me/${phone.length>=10?phone:""}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">Hantar Melalui WhatsApp</a></div>`,"Tutup",async()=>{});
+  const cb=$("#vl-copy");if(cb)cb.onclick=async()=>{try{await navigator.clipboard.writeText(link);toast("Pautan disalin")}catch(e){const i=$("#vl-link");i.select();toast("Tekan lama untuk salin")}};
+};
 ACT.doadditem=()=>{DOF.D.items.push({desc:"",qty:""});$("#do-items").innerHTML=doItemsHTML()};
 ACT.dodelitem=d=>{DOF.D.items.splice(+d.i,1);$("#do-items").innerHTML=doItemsHTML()};
 ACT.sigclear=d=>{DOF[d.k].clear()};
-ACT.doclose=()=>{DOF=null;closeModal();render()};
+ACT.doclose=()=>{DOF=null;closeModal();if(S.vendorToken){vendorHome();return}render()};
 ACT.dosubmit=async(d,btn)=>{
   const D=DOF.D,items=D.items.map(x=>({desc:String(x.desc||"").trim(),qty:String(x.qty||"").trim()})).filter(x=>x.desc);
   if(!items.length){toast("Isi sekurang-kurangnya satu barang atau kerja.");return}
@@ -1059,10 +1083,22 @@ ACT.dosubmit=async(d,btn)=>{
   if(!String(D.iname).trim()){toast("Isi nama pemandu.");return}
   if(DOF.i.isEmpty()){toast("Pemandu perlu tandatangan dalam kotak.");return}
   const j=byId("jobs",DOF.id);if(!j){toast("Rekod kerja tidak dijumpai.");return}
+  if(S.vendorToken){
+    const now=new Date().toISOString();
+    const doObj={date:D.date||todayISO(),lorryReg:String(D.lorryReg||"").toUpperCase(),customerPo:String(D.customerPo||"").toUpperCase(),items:items.map(x=>({desc:x.desc.toUpperCase(),qty:x.qty.toUpperCase()})),timeFrom:D.timeFrom,timeTo:D.timeTo,from:String(D.from||"").toUpperCase(),to:String(D.to||"").toUpperCase(),
+      receiver:{name:String(D.rname).trim().toUpperCase(),ic:String(D.ric).trim(),sig:DOF.r.toData(),signedAt:now},issuer:{name:String(D.iname).trim().toUpperCase(),vendor:String(j.vendorName||"").toUpperCase(),sig:DOF.i.toData()}};
+    btn.disabled=true;btn.textContent="Menghantar…";
+    const{data:res,error}=await S.sb.rpc("vendor_submit_do",{p_token:S.vendorToken,p_do:doObj});
+    if(error||!res||res.error){btn.disabled=false;btn.textContent="Hantar DO";toast(res&&res.error==="used"?"DO untuk pautan ini sudah dihantar.":res&&res.error==="expired"?"Pautan ini sudah tamat tempoh.":"Gagal menghantar. Semak internet dan cuba lagi.");return}
+    j.do=Object.assign(doObj,{no:res.no,status:"signed",submittedAt:now});
+    $(".dosheet .in").innerHTML=`<div class="dodone"><div class="tick" aria-hidden="true">✓</div><h2>DO ${esc(res.no)} Dihantar</h2><p>Terima kasih. DO ini telah dihantar kepada ${esc(orgLabel())}. Pautan ini kini tidak boleh digunakan lagi.</p>
+      <button class="btn pri" data-act="doprint" data-id="${esc(DOF.id)}">Lihat / Simpan PDF</button></div>`;
+    return;
+  }
   const no=nextDoNo(),now=new Date().toISOString();
   const data=clone(j);
   data.do={no,date:D.date||todayISO(),lorryReg:D.lorryReg,customerPo:D.customerPo,items,timeFrom:D.timeFrom,timeTo:D.timeTo,from:D.from,to:D.to,
-    receiver:{name:String(D.rname).trim(),ic:String(D.ric).trim(),sig:DOF.r.toData(),signedAt:now},issuer:{name:String(D.iname).trim(),driverId:curDriverId()||j.driverId||"",email:S.userName||"",sig:DOF.i.toData()},status:"signed",submittedAt:now};
+    receiver:{name:String(D.rname).trim(),ic:String(D.ric).trim(),sig:DOF.r.toData(),signedAt:now},issuer:{name:String(D.iname).trim(),driverId:j.fleet==="vendor"?"":(curDriverId()||j.driverId||""),vendor:j.fleet==="vendor"?String(j.vendorName||""):"",email:S.userName||"",sig:DOF.i.toData()},status:"signed",submittedAt:now};
   data.status="done";data.endDate=data.endDate||data.do.date;
   data.log=(data.log||[]).concat(logEntry(`DO ${no} ditandatangani oleh ${data.do.receiver.name}`));
   btn.disabled=true;btn.textContent="Menghantar…";
@@ -1089,7 +1125,7 @@ VIEWS.do=()=>{
   const pending=S.jobs.filter(j=>(j.status==="confirmed"||j.status==="ongoing")&&!(j.do&&j.do.status==="signed"));
   const cp=crumb([["Delivery Order"]])+`<div class="right">${searchBox("do","Cari no. DO, pelanggan, penerima…")}</div>`;
   let main="";
-  if(pending.length)main+=`<h2 class="sec">Menunggu DO (${pending.length})</h2><div class="tbl-wrap" style="margin-bottom:18px"><table><thead><tr><th>Rekod Kerja</th><th>Pelanggan</th><th>Tarikh</th><th>Pemandu</th><th>Status</th><th></th></tr></thead><tbody>${pending.map(j=>`<tr class="click" data-act="open" data-v="kerja" data-id="${j.id}"><td class="mono">${esc(j.no)}</td><td>${esc(custName(j.customerId))}</td><td class="num">${dmy(j.startDate)}</td><td>${esc(jobDriverName(j)||"—")}</td><td>${pill(JOB_ST[j.status])}</td><td class="r"><button class="btn sm" data-act="dofill" data-id="${j.id}">Isi DO</button></td></tr>`).join("")}</tbody></table></div>`;
+  if(pending.length)main+=`<h2 class="sec">Menunggu DO (${pending.length})</h2><div class="tbl-wrap" style="margin-bottom:18px"><table><thead><tr><th>Rekod Kerja</th><th>Pelanggan</th><th>Tarikh</th><th>Pemandu</th><th>Status</th><th></th></tr></thead><tbody>${pending.map(j=>`<tr class="click" data-act="open" data-v="kerja" data-id="${j.id}"><td class="mono">${esc(j.no)}</td><td>${esc(custName(j.customerId))}</td><td class="num">${dmy(j.startDate)}</td><td>${esc(jobDriverName(j)||"—")}</td><td>${pill(JOB_ST[j.status])}</td><td class="r"><button class="btn sm" data-act="dofill" data-id="${j.id}">Isi DO</button>${j.fleet==="vendor"?` <button class="btn sm pri" data-act="vendorlink" data-id="${j.id}">Pautan Vendor</button>`:""}</td></tr>`).join("")}</tbody></table></div>`;
   main+=`<h2 class="sec">DO Ditandatangani</h2>`;
   main+=rows.length?`<div class="tbl-wrap"><table><thead><tr><th>No. DO</th><th>Tarikh</th><th>Pelanggan</th><th>Rekod Kerja</th><th>Lori</th><th>Penerima</th><th>Invois</th><th></th></tr></thead><tbody>${rows.map(j=>{const inv=S.invoices.find(i=>i.jobId===j.id&&i.status!=="cancelled");return `<tr class="click" data-act="open" data-v="kerja" data-id="${j.id}"><td class="mono">${esc(j.do.no)}</td><td class="num">${dmy(j.do.date)}</td><td>${esc(custName(j.customerId))}</td><td class="mono">${esc(j.no)}</td><td class="mono">${esc(j.do.lorryReg||"—")}</td><td>${esc(j.do.receiver&&j.do.receiver.name||"—")}</td><td>${inv?invPill(inv):`<span class="pill p-amber">Belum</span>`}</td><td class="r"><button class="btn sm" data-act="doprint" data-id="${j.id}">Cetak</button></td></tr>`}).join("")}</tbody></table></div>`
    :emptyBox("Belum Ada DO Digital","Bila pemandu atau admin menghantar DO yang ditandatangani PIC tapak, ia akan disenaraikan di sini.");
@@ -1153,7 +1189,7 @@ function doPage(j){
 <div class="sigs"><div class="sig">${D.receiver&&D.receiver.sig?`<img src="${esc(D.receiver.sig)}" alt="">`:`<div style="height:20mm"></div>`}<div class="ln">(Receiver sign / comp stamp)</div>
  <div class="kv"><span>NAME</span><span>${esc(D.receiver&&D.receiver.name||"")}</span></div><div class="kv"><span>I/C NO</span><span>${esc(D.receiver&&D.receiver.ic||"")}</span></div><div class="kv"><span>DATE</span><span>${D.receiver&&D.receiver.signedAt?esc(new Date(D.receiver.signedAt).toLocaleString("en-GB",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})):""}</span></div></div>
  <div class="sig">${D.issuer&&D.issuer.sig?`<img src="${esc(D.issuer.sig)}" alt="">`:`<div style="height:20mm"></div>`}<div class="ln">(Issued by)</div>
- <div class="kv"><span>NAME</span><span>${esc(D.issuer&&D.issuer.name||"")}</span></div><div class="kv"><span>DATE</span><span>${dmy(D.date)}</span></div></div></div>
+ <div class="kv"><span>NAME</span><span>${esc(D.issuer&&D.issuer.name||"")}</span></div>${D.issuer&&D.issuer.vendor?`<div class="kv"><span>VENDOR</span><span>${esc(D.issuer.vendor)}</span></div>`:""}<div class="kv"><span>DATE</span><span>${dmy(D.date)}</span></div></div></div>
 <div class="foot">Digitally signed delivery order · ${esc(j.no)}</div>
 </div>`;
 }
@@ -1447,12 +1483,28 @@ sb.auth.onAuthStateChange((ev,session)=>{
   if(ev==="PASSWORD_RECOVERY"){loginView("setpwd");return}
   if(ev==="SIGNED_OUT"){started=false;loginView("login");return}
 });
+const vtok=new URLSearchParams(location.search).get("do");
+let vendorData=null;
+function vendorHome(){
+  const j=S.jobs[0]||{},done=j.do&&j.do.status==="signed";
+  $("#main").innerHTML=done?emptyBox("DO "+(j.do.no||"")+" Telah Dihantar","Terima kasih. Anda boleh tutup halaman ini."):`<div class="empty"><h3>${esc(j.no||"")} · ${esc(custName(j.customerId))}</h3><p>${esc(j.pickup||"")}${j.dropoff?" → "+esc(j.dropoff):""}</p><button class="btn pri" data-act="dofill" data-id="${esc(j.id)}">Isi DO &amp; Tandatangan</button></div>`;
+}
+async function vendorMode(tok){
+  S.sb=sb;$("#nav").innerHTML="";$("#who").innerHTML="";$("#cp").innerHTML=`<div class="crumb"><span>Delivery Order</span></div>`;
+  $("#main").innerHTML=emptyBox("Memuatkan Job…","Sila tunggu sebentar.");
+  let res=null;try{const r=await sb.rpc("vendor_job",{p_token:tok});res=r.error?{error:"rpc"}:r.data}catch(e){res={error:"rpc"}}
+  if(!res||res.error){const m={used:["DO Sudah Dihantar","DO untuk pautan ini sudah dihantar. Terima kasih."],expired:["Pautan Tamat Tempoh","Pautan ini sudah tamat tempoh. Minta pautan baharu daripada admin."]}[res&&res.error]||["Pautan Tidak Sah","Pautan ini tidak sah atau tidak dapat dibuka. Semak internet, atau minta pautan baharu daripada admin."];$("#main").innerHTML=emptyBox(m[0],m[1]);return}
+  S.vendorToken=tok;S.org=res.org;S.company=res.company||{};S.orgName=S.company.name||"";S.canWrite=true;
+  S.jobs=[Object.assign({id:res.jobId,fleet:"vendor"},res.job)];S.customers=[Object.assign({id:res.job.customerId},res.customer)];
+  loadOrgLogo();applyBrand();vendorHome();ACT.dofill({id:res.jobId});
+}
+if(vtok){vendorMode(vtok)}else
 sb.auth.getSession().then(({data})=>{
   if(data.session&&needPwd)loginView("setpwd");
   else if(data.session)start(data.session);
   else loginView("login");
 });
-sb.auth.onAuthStateChange((ev,session)=>{if(ev==="SIGNED_IN"&&session&&!needPwd)start(session)});
+if(!vtok)sb.auth.onAuthStateChange((ev,session)=>{if(ev==="SIGNED_IN"&&session&&!needPwd)start(session)});
 }
 })();
 </script>
