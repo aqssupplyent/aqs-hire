@@ -437,6 +437,7 @@ const esc=v=>String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
 const n=v=>{const x=parseFloat(v);return isFinite(x)?x:0};
 const rmFmt=new Intl.NumberFormat("en-MY",{minimumFractionDigits:2,maximumFractionDigits:2});
 const RM=v=>"RM "+rmFmt.format(n(v));
+const validDate=v=>/^\d{4}-\d{2}-\d{2}$/.test(v||"")&&+v.slice(0,4)>=1990&&+v.slice(0,4)<=2100;
 const todayISO=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)};
 const addDays=(iso,k)=>{const d=new Date(iso+"T00:00:00");d.setDate(d.getDate()+n(k));const z=new Date(d);z.setMinutes(z.getMinutes()-z.getTimezoneOffset());return z.toISOString().slice(0,10)};
 const dmy=iso=>iso?iso.slice(8,10)+"/"+iso.slice(5,7)+"/"+iso.slice(0,4):"—";
@@ -826,7 +827,7 @@ function docsTable(types,docs,ed){
   return `<div class="tabs"><span>${types===DOC_DRIVER?"Dokumen Pemandu":"Dokumen Kenderaan"}</span></div><div class="lines"><table><thead><tr><th>Dokumen</th><th>No. Rujukan</th><th>Tarikh Tamat</th><th>Status</th><th>Salinan</th></tr></thead><tbody>${types.map(([k,lab,ne])=>{const o=docs[k]||{};const st=docState(o,ne);
     return `<tr><td><b>${esc(lab)}</b></td><td>${ed?`<input class="cell" data-doc="${k}" data-dk="no" value="${esc(o.no||"")}" placeholder="${k==="license"?"cth. D, E":"jika ada"}">`:esc(o.no||"—")}</td>
     <td>${ne?`<span style="color:var(--muted)">—</span>`:ed?`<input class="cell" type="date" data-doc="${k}" data-dk="expiry" value="${esc(o.expiry||"")}">`:esc(dmy(o.expiry))}</td>
-    <td>${docPill(st)}</td>
+    <td id="dst-${k}">${docPill(st)}</td>
     <td class="docf">${o.path?`<button class="btn sm" type="button" data-act="docview" data-k="${k}">Lihat</button>${ed?` <button class="btn sm" type="button" data-act="docup" data-k="${k}">Tukar</button> <button class="xbtn" type="button" title="Buang salinan" aria-label="Buang salinan" data-act="docdel" data-k="${k}">×</button>`:""}`:ed?`<button class="btn sm" type="button" data-act="docup" data-k="${k}">Muat Naik</button>`:"—"}</td></tr>`}).join("")}</tbody></table></div>
     <p style="color:var(--muted);font-size:12px;margin:6px 0 0">Salinan disimpan secara peribadi; hanya admin boleh melihatnya. Gambar atau PDF, maksimum 10 MB.</p>`;
 }
@@ -888,14 +889,14 @@ document.addEventListener("input",e=>{
   if(t.dataset.q){S.q[t.dataset.q]=t.value;const pos=t.selectionStart;render();const el=document.getElementById("q-"+t.dataset.q);if(el){el.focus();try{el.setSelectionRange(pos,pos)}catch(_){}}return}
   if(!form)return;
   if(t.dataset.f){const k=t.dataset.f;form.data[k]=t.type==="checkbox"?t.checked:(t.type==="number"?(t.value===""?"":n(t.value)):t.value);markDirty();refreshTotals();return}
-  if(t.dataset.doc){const docs=form.data.docs=form.data.docs||{};const o=docs[t.dataset.doc]=docs[t.dataset.doc]||{};o[t.dataset.dk]=t.dataset.dk==="no"?t.value.toUpperCase():t.value;markDirty();return}
+  if(t.dataset.doc){const docs=form.data.docs=form.data.docs||{};const o=docs[t.dataset.doc]=docs[t.dataset.doc]||{};o[t.dataset.dk]=t.dataset.dk==="no"?t.value.toUpperCase():t.value;markDirty();
+    if(t.dataset.dk==="expiry"){const cell=document.getElementById("dst-"+t.dataset.doc);if(cell)cell.innerHTML=docPill(docState(validDate(t.value)?o:Object.assign({},o,{expiry:""}),(DOC_DRIVER.find(x=>x[0]===t.dataset.doc)||[])[2]))}return}
   if(t.dataset.lf){if(t.tagName==="TEXTAREA")growTA(t);const l=form.data.lines[+t.dataset.l];const k=t.dataset.lf;l[k]=t.type==="number"?(t.value===""?"":n(t.value)):t.value;markDirty();refreshTotals()}
 });
 document.addEventListener("change",e=>{
   const t=e.target;if(!form)return;
   if(t.id==="f-logo"&&t.files&&t.files[0]){const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,320/Math.max(im.width,im.height));const c=document.createElement("canvas");c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext("2d").drawImage(im,0,0,c.width,c.height);form.data.logo=c.toDataURL("image/png");form.dirty=true;render()};im.onerror=()=>toast("Fail itu bukan gambar yang sah.");im.src=fr.result};fr.readAsDataURL(t.files[0]);return}
   if(t.dataset.lf==="assetId"){const l=form.data.lines[+t.dataset.l];l.assetId=t.value;form.dirty=true;const a=byId("assets",t.value);if(a){l.desc=buildDesc(a,lineContext(),l.desc);l.unit=a.unit||l.unit;if(form.kind==="invoice")l.rate=n(a.rate)}render();return}
-  if(t.dataset.doc&&t.dataset.dk==="expiry"){render();return}
   if(form.kind==="job"&&["load","time","supervisor"].includes(t.dataset.f)){if(syncNote(form.data)){form.dirty=true;render()}return}
   if(form.kind==="job"&&["pickup","dropoff"].includes(t.dataset.f)){if(syncRoutes(form.data)){form.dirty=true;render()}return}
   if(form.kind==="job"&&t.dataset.f==="fleet"){if(t.value==="vendor"){form.data.driverId=""}form.dirty=true;render();return}
@@ -903,7 +904,7 @@ document.addEventListener("change",e=>{
   if(t.dataset.f==="driverId"&&form.kind==="job"){applyDriver(form.data,drivers().find(x=>x.id===t.value));form.dirty=true;render();return}
   if(t.dataset.f==="customerId"&&form.kind==="invoice"){const j=byId("jobs",form.data.jobId);if(j&&j.customerId!==t.value)form.data.jobId="";render();return}
   if(t.dataset.f==="jobId"&&form.kind==="invoice"){const j=byId("jobs",t.value);if(j&&!form.data.customerId)form.data.customerId=j.customerId;render();return}
-  if(t.dataset.f==="date"&&form.kind==="invoice"){form.data.dueDate=addDays(t.value,S.company.terms??15);render()}
+  if(t.dataset.f==="date"&&form.kind==="invoice"&&validDate(t.value)){form.data.dueDate=addDays(t.value,S.company.terms??15);const dd=document.getElementById("f-dueDate");if(dd)dd.value=form.data.dueDate}
 });
 document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id==="note"){e.preventDefault();ACT.note()}if(e.key==="Escape"&&!$(".dosheet"))closeModal()});
 
