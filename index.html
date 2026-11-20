@@ -253,6 +253,7 @@ select option{background:var(--surface);color:var(--ink)}
 @media (max-width:1400px){.who .em{display:none}}
 @media (max-width:1100px){.who .lbl{display:none}}
 @media (max-width:460px){.brand span{display:none}.who .lbl{display:none}}
+@media (pointer:coarse){.who button{min-height:34px;padding:4px 10px;font-size:13px}}
 
 /* modal */
 .scrim{position:fixed;inset:0;background:rgba(10,18,22,.5);z-index:40;display:grid;grid-template-columns:minmax(0,1fr);justify-items:center;align-items:center;padding:calc(16px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));overflow-y:auto}
@@ -1945,7 +1946,11 @@ if(!window.supabase||!CFG.SUPABASE_URL||/YOUR-PROJECT/.test(CFG.SUPABASE_URL)){
   $("#main").innerHTML=emptyBox("Sistem Belum Disambungkan","Isi SUPABASE_URL dan SUPABASE_ANON_KEY dalam fail config.js, kemudian muat semula halaman.");
 }else{
 const sb=window.supabase.createClient(CFG.SUPABASE_URL,CFG.SUPABASE_ANON_KEY);
-ACT.logout=async()=>{writeDriverId("");await sb.auth.signOut();location.hash="";location.reload()};
+ACT.logout=async(d,btn)=>{if(btn){btn.disabled=true;btn.textContent="…"}writeDriverId("");
+  try{await Promise.race([sb.auth.signOut({scope:"local"}),new Promise(r=>setTimeout(r,2500))])}catch(e){}
+  try{Object.keys(localStorage).filter(k=>/^sb-.*-auth-token/.test(k)).forEach(k=>localStorage.removeItem(k))}catch(e){}
+  sb.auth.signOut().catch(()=>{});
+  location.replace(location.pathname)};
 function loginView(mode,msg){
   $("#cp").innerHTML="";$("#nav").innerHTML="";$("#who").innerHTML=langBtn();
   const titles={login:["Log Masuk","Masukkan e-mel dan kata laluan akaun anda."],forgot:["Tetapkan Semula Kata Laluan","Kami akan hantar pautan ke e-mel anda."],setpwd:["Tetapkan Kata Laluan","Pilih kata laluan untuk akaun anda (sekurang-kurangnya 8 aksara)."]};
