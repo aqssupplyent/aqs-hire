@@ -183,8 +183,17 @@ select option{background:var(--surface);color:var(--ink)}
 .tcard dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:3px 12px;margin:2px 0 6px;font-size:13px}
 .tcard dt{color:var(--muted)}.tcard dd{margin:0;overflow-wrap:anywhere}
 .tact{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto}.tact .btn{padding:10px 14px;font-size:16px}
+.orgpick{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:12px;max-width:760px}
+.orgcard{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px;cursor:pointer;color:var(--ink);font:inherit}
+.orgcard:hover{border-color:var(--primary);background:var(--sunk)}
+.orgcard i{flex:none;display:grid;place-items:center;width:44px;height:44px;border-radius:9px;background:var(--amber);color:#1a1205;font-style:normal;font-weight:700;font-size:16px;font-family:var(--f-display)}
+.orgcard i.navy{background:#1c3a6e;color:#f2c230;box-shadow:inset 0 0 0 1px #f2c230}
+.orgcard .on{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.orgcard .on b{font-family:var(--f-display);font-size:20px;line-height:1.2;white-space:normal;overflow-wrap:anywhere}
+.orgcard .on small{font-size:13px;color:var(--muted)}
+.orgcard .go{flex:none;font-size:26px;color:var(--muted);line-height:1}
 .drvpick{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
-.drvpick .btn{padding:18px;text-align:left;display:flex;flex-direction:column;gap:2px;font-size:20px}
+.drvpick .btn{padding:18px;text-align:left;display:flex;flex-direction:column;gap:2px;font-size:20px;white-space:normal;overflow-wrap:anywhere}
 .drvpick .btn span{font-size:13px;color:var(--muted);font-weight:400}
 /* vendor job list */
 .vjgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
@@ -242,6 +251,7 @@ select option{background:var(--surface);color:var(--ink)}
 @media (max-width:520px){.modal header{padding:14px 16px;font-size:18px}.modal .body{padding:14px 16px}.modal .body .fld{grid-template-columns:minmax(0,1fr);gap:2px}.modal footer{padding:12px 16px}.modal footer .btn{flex:1 1 0;padding:12px;font-size:16px}}
 
 .menu-btn{display:none}
+.appbar:has(#nav:empty) .menu-btn{display:none!important}
 @media (min-width:1600px){
   .wrap{max-width:1400px}
   .sheet,.chatter{max-width:1260px}
@@ -1554,7 +1564,7 @@ function readOrg(){try{return localStorage.getItem("aqs-org")||""}catch(e){retur
 function writeOrg(v){try{v?localStorage.setItem("aqs-org",v):localStorage.removeItem("aqs-org")}catch(e){}}
 function orgPicker(){
   $("#cp").innerHTML=`<div class="crumb"><span>Pilih Syarikat</span></div>`;$("#nav").innerHTML="";
-  $("#main").innerHTML=`<p style="color:var(--muted);margin:0 0 12px">Akaun ${esc(S.userName)} ialah ahli beberapa syarikat. Pilih syarikat untuk dibuka.</p><div class="drvpick">${S.orgs.map(o=>`<button class="btn" data-act="pickorg" data-id="${esc(o.id)}"><b>${esc(o.name)}</b><span>${o.role==="driver"?"Pemandu":"Admin"}</span></button>`).join("")}</div>`;
+  $("#main").innerHTML=`<p style="color:var(--muted);margin:0 0 12px">Akaun ${esc(S.userName)} ialah ahli beberapa syarikat. Pilih syarikat untuk dibuka.</p><div class="orgpick">${S.orgs.map(o=>`<button class="orgcard" data-act="pickorg" data-id="${esc(o.id)}"><i class="${o.id==="aqs"?"":"navy"}" aria-hidden="true">${esc(orgInitials(o.name))}</i><span class="on"><b>${esc(o.name)}</b><small>${o.role==="driver"?"Pemandu":"Admin"}</small></span><span class="go" aria-hidden="true">›</span></button>`).join("")}</div>`;
 }
 ACT.pickorg=d=>{writeOrg(d.id);location.reload()};
 ACT.switchorg=()=>{writeOrg("");location.reload()};
