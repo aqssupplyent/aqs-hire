@@ -192,7 +192,7 @@ select option{background:var(--surface);color:var(--ink)}
 .dotop{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.dotop b{font-family:var(--f-display);font-size:20px}
 .dobox{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:12px}
 .dobox h3{font-family:var(--f-display);font-size:16px;margin:0 0 6px}
-.dohead{display:flex;justify-content:space-between;gap:12px;margin-bottom:6px}.dohead small{display:block;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.06em}.dohead b{font-size:16px}
+.dohead{display:flex;justify-content:space-between;gap:12px;margin-bottom:6px}.dohead .dd{display:block;font-size:13px;color:var(--muted);margin-top:2px}.dohead small{display:block;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.06em}.dohead b{font-size:16px}
 .dof label,.dobox>label{display:block;font-weight:600;font-size:13px;margin:10px 0 4px}
 .dof input,.doitem textarea,.doitem input{display:block;width:100%;min-width:0;max-width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:6px;padding:10px 12px;background:var(--sunk);font-size:16px;line-height:1.4;color:var(--ink);font-family:inherit}
 .dosheet input[type=date],.dosheet input[type=time]{-webkit-appearance:none;appearance:none;min-height:46px;text-align:left}
@@ -415,6 +415,7 @@ const RM=v=>"RM "+rmFmt.format(n(v));
 const todayISO=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)};
 const addDays=(iso,k)=>{const d=new Date(iso+"T00:00:00");d.setDate(d.getDate()+n(k));const z=new Date(d);z.setMinutes(z.getMinutes()-z.getTimezoneOffset());return z.toISOString().slice(0,10)};
 const dmy=iso=>iso?iso.slice(8,10)+"/"+iso.slice(5,7)+"/"+iso.slice(0,4):"—";
+function dayDate(iso){if(!iso)return"";const d=new Date(iso+"T00:00:00");if(isNaN(d))return dmy(iso);return d.toLocaleDateString(LOC(),{weekday:"long"})+", "+dmy(iso)}
 const clone=o=>JSON.parse(JSON.stringify(o||{}));
 const byId=(col,id)=>S[col].find(x=>x.id===id);
 const custName=id=>(byId("customers",id)||{}).name||"—";
@@ -1135,7 +1136,7 @@ ACT.dofill=d=>{
   const D=DOF.D,f=(k,label,type,ph)=>`<div><label for="do-${k}">${label}</label><input id="do-${k}" type="${type||"text"}" data-dof="${k}" value="${esc(D[k])}" placeholder="${esc(ph||"")}"></div>`;
   $("#overlay").innerHTML=`<div class="dosheet" role="dialog" aria-modal="true" aria-label="Delivery Order"><div class="in">
    <div class="dotop"><button class="btn" data-act="doclose">← Kembali</button><b>Delivery Order</b><span class="mono">${esc(j.no)}</span></div>
-   <section class="dobox"><div class="dohead"><div><small>M/S</small><b>${esc(custName(j.customerId))}</b></div><div><small>D.O. No</small><b class="mono">${esc(nextDoNo())}</b></div></div>
+   <section class="dobox"><div class="dohead">${S.vendorToken?`<div><small>No. Job</small><b>${esc(j.no||"—")}</b><span class="dd">${esc(dayDate(j.startDate))}</span></div>`:`<div><small>M/S</small><b>${esc(custName(j.customerId))}</b></div>`}<div><small>D.O. No</small><b class="mono">${esc(nextDoNo())}</b></div></div>
     <div class="dof two">${f("date","Tarikh","date")}${f("lorryReg","Lorry Reg No","text","cth. VBE 6317")}</div><div class="dof">${f("customerPo","Customer PO No.","text","jika ada")}</div></section>
    <section class="dobox"><h3>Barang / Kerja</h3><div id="do-items">${doItemsHTML()}</div><button class="addline" data-act="doadditem">+ Tambah Barang</button></section>
    <section class="dobox dof"><div class="two">${f("timeFrom","Masa Mula","time")}${f("timeTo","Masa Tamat","time")}</div>${f("from","From","text","Lokasi ambil")}${f("to","Delivery To","text","Lokasi hantar")}</section>
@@ -1159,7 +1160,7 @@ ACT.vendorlink=async d=>{
   try{await S.db.collection("jobs").doc(j.id).update({log:(j.log||[]).concat(logEntry("Pautan DO vendor dihantar kepada "+j.vendorDriver+(j.vendorName?" ("+j.vendorName+")":"")))})}catch(e){}
   const link=location.origin+location.pathname+"?do="+token;
   const phone=String(j.vendorPhone||"").replace(/\D/g,"").replace(/^0/,"60");
-  const msg=`Salam ${j.vendorDriver}. Job ${j.no} untuk ${custName(j.customerId)}\nPickup: ${j.pickup||"-"}\nDropoff: ${j.dropoff||"-"}\nTarikh: ${dmy(j.startDate)}${j.time?" "+j.time:""}\n\nBila kerja siap, buka pautan ini untuk isi DO dan dapatkan tandatangan PIC tapak:\n${link}\n\n— ${orgLabel()}`;
+  const msg=`Salam ${j.vendorDriver}. Job ${j.no}\nPickup: ${j.pickup||"-"}\nDropoff: ${j.dropoff||"-"}\nTarikh: ${dmy(j.startDate)}${j.time?" "+j.time:""}\n\nBila kerja siap, buka pautan ini untuk isi DO dan dapatkan tandatangan PIC tapak:\n${link}\n\n— ${orgLabel()}`;
   modal("Pautan DO Vendor",`<p style="margin:0 0 8px">Hantar pautan ini kepada <b>${esc(j.vendorDriver)}</b>${j.vendorName?" ("+esc(j.vendorName)+")":""}. Pautan hanya untuk job <b>${esc(j.no)}</b>, boleh digunakan sekali, dan tamat dalam 7 hari.</p>
    <input id="vl-link" readonly value="${esc(link)}" style="width:100%;border:1px solid var(--line);border-radius:6px;padding:8px;background:var(--sunk);font-size:13px">
    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn" type="button" id="vl-copy">Salin Pautan</button><a class="btn pri" style="text-decoration:none" href="https://wa.me/${phone.length>=10?phone:""}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">Hantar Melalui WhatsApp</a></div>`,"Tutup",async()=>{});
@@ -1168,7 +1169,7 @@ ACT.vendorlink=async d=>{
 ACT.doadditem=()=>{DOF.D.items.push({desc:"",qty:""});$("#do-items").innerHTML=doItemsHTML();growDO();const t=document.getElementById("di-d-"+(DOF.D.items.length-1));if(t)t.focus()};
 ACT.dodelitem=d=>{DOF.D.items.splice(+d.i,1);$("#do-items").innerHTML=doItemsHTML();growDO()};
 ACT.sigclear=d=>{DOF[d.k].clear()};
-ACT.doclose=()=>{DOF=null;closeModal();if(S.vendorToken){vendorHome();return}render()};
+ACT.doclose=()=>{DOF=null;closeModal();if(S.vendorToken){S.vendorHome&&S.vendorHome();return}render()};
 ACT.dosubmit=async(d,btn)=>{
   const D=DOF.D,items=D.items.map(x=>({desc:String(x.desc||"").trim(),qty:String(x.qty||"").trim()})).filter(x=>x.desc);
   if(!items.length){toast("Isi sekurang-kurangnya satu barang atau kerja.");return}
@@ -1581,14 +1582,14 @@ const vtok=new URLSearchParams(location.search).get("do");
 let vendorData=null;
 function vendorHome(){
   const j=S.jobs[0]||{},done=j.do&&j.do.status==="signed";
-  $("#main").innerHTML=done?emptyBox("DO "+(j.do.no||"")+" Telah Dihantar","Terima kasih. Anda boleh tutup halaman ini."):`<div class="empty"><h3>${esc(j.no||"")} · ${esc(custName(j.customerId))}</h3><p>${esc(j.pickup||"")}${j.dropoff?" → "+esc(j.dropoff):""}</p><button class="btn pri" data-act="dofill" data-id="${esc(j.id)}">Isi DO &amp; Tandatangan</button></div>`;
+  $("#main").innerHTML=done?emptyBox("DO "+(j.do.no||"")+" Telah Dihantar","Terima kasih. Anda boleh tutup halaman ini."):`<div class="empty"><h3>${j.no?esc(j.no):"Delivery Order"}</h3><p>${esc(dayDate(j.startDate))}</p><button class="btn pri" data-act="dofill" data-id="${esc(j.id)}">Isi DO &amp; Tandatangan</button></div>`;
 }
 async function vendorMode(tok){
   S.sb=sb;$("#nav").innerHTML="";$("#who").innerHTML="";$("#cp").innerHTML=`<div class="crumb"><span>Delivery Order</span></div>`;
   $("#main").innerHTML=emptyBox("Memuatkan Job…","Sila tunggu sebentar.");
   let res=null;try{const r=await sb.rpc("vendor_job",{p_token:tok});res=r.error?{error:"rpc"}:r.data}catch(e){res={error:"rpc"}}
   if(!res||res.error){const m={used:["DO Sudah Dihantar","DO untuk pautan ini sudah dihantar. Terima kasih."],expired:["Pautan Tamat Tempoh","Pautan ini sudah tamat tempoh. Minta pautan baharu daripada admin."]}[res&&res.error]||["Pautan Tidak Sah","Pautan ini tidak sah atau tidak dapat dibuka. Semak internet, atau minta pautan baharu daripada admin."];$("#main").innerHTML=emptyBox(m[0],m[1]);return}
-  S.vendorToken=tok;S.org=res.org;S.company=res.company||{};S.orgName=S.company.name||"";S.canWrite=true;
+  S.vendorHome=vendorHome;S.vendorToken=tok;S.org=res.org;S.company=res.company||{};S.orgName=S.company.name||"";S.canWrite=true;
   S.jobs=[Object.assign({id:res.jobId,fleet:"vendor"},res.job)];S.customers=[Object.assign({id:res.job.customerId},res.customer)];
   loadOrgLogo();applyBrand();vendorHome();ACT.dofill({id:res.jobId});
 }
