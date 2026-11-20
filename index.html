@@ -214,15 +214,17 @@ select option{background:var(--surface);color:var(--ink)}
 .dosum{display:flex;flex-wrap:wrap;gap:10px 24px;align-items:center;background:var(--ok-soft);border-radius:var(--r);padding:10px 14px;margin-bottom:16px}
 .dosum small{display:block;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}.dosum span{display:block;font-size:13px}
 .dosum img{height:44px;background:#fff;border-radius:4px;padding:2px}
-@media (max-width:460px){.brand span{display:none}}
+@media (max-width:460px){.brand span{display:none}.who .lbl{display:none}}
 
 /* modal */
-.scrim{position:fixed;inset:0;background:rgba(10,18,22,.5);z-index:40;display:grid;place-items:center;padding:16px}
-.modal{background:var(--surface);border-radius:8px;width:520px;max-height:calc(100vh - 32px);overflow:auto;max-width:100%;border:1px solid var(--line)}
+.scrim{position:fixed;inset:0;background:rgba(10,18,22,.5);z-index:40;display:grid;grid-template-columns:minmax(0,1fr);justify-items:center;align-items:center;padding:calc(16px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));overflow-y:auto}
+.modal{background:var(--surface);border-radius:10px;width:min(520px,100%);min-width:0;max-height:calc(100dvh - 32px);overflow:auto;border:1px solid var(--line);box-shadow:0 12px 40px rgba(0,0,0,.35)}
+.modal .body p{overflow-wrap:anywhere}
 .modal header{padding:14px 18px;border-bottom:1px solid var(--line);font-family:var(--f-display);font-size:20px;font-weight:600}
 .modal .body{padding:14px 18px}
 .modal .body .fld{grid-template-columns:120px minmax(0,1fr)}
-.modal footer{padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end}
+.modal footer{padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+@media (max-width:520px){.modal header{padding:14px 16px;font-size:18px}.modal .body{padding:14px 16px}.modal .body .fld{grid-template-columns:minmax(0,1fr);gap:2px}.modal footer{padding:12px 16px}.modal footer .btn{flex:1 1 0;padding:12px;font-size:16px}}
 
 .menu-btn{display:none}
 @media (min-width:1600px){
@@ -1484,7 +1486,7 @@ async function start(session){
   try{await loadStaff()}catch(e){}
   loadOrgLogo();
   if(S.orgName)applyBrand();
-  if(S.orgs&&S.orgs.length>1)$("#who").insertAdjacentHTML("afterbegin",`<button data-act="switchorg" title="Tukar Syarikat">⇄ Tukar Syarikat</button>`);
+  if(S.orgs&&S.orgs.length>1)$("#who").insertAdjacentHTML("afterbegin",`<button data-act="switchorg" title="Tukar Syarikat" aria-label="Tukar Syarikat"><span aria-hidden="true">⇄</span><span class="lbl"> Tukar Syarikat</span></button>`);
   if(S.isDriver){S.driverId=readDriverId();route.view="tugasan";route.id=null;S.loaded.add("invoices");$("#who").innerHTML=`<span class="em">${esc((S.me&&S.me.name)||S.userName)}</span><button data-act="logout">Log Keluar</button>`}
   render();
   const timer=setTimeout(()=>{if(!isLoaded()){S.offline=true;COLS.forEach(c=>S.loaded.add(c));render()}},10000);
