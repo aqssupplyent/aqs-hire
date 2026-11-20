@@ -995,7 +995,7 @@ function payCalc(D,m,pct){
   const list=Object.values(groups).map(g=>{g.rows.sort((a,b)=>a.date.localeCompare(b.date)||a.no.localeCompare(b.no));g.plates=[...g.plates];
     g.total=g.rows.reduce((s,r)=>s+r.amount,0);g.comm20=g.total*pct/100;
     const dv=prDrv(g.key),mo=prMon(m,g.key);g.dv=dv;g.mo=mo;
-    g.basic=n(dv.basic);g.commission=Math.max(0,g.comm20-g.basic);g.phoneA=n(dv.phone);g.travel=n(mo.travelDays)*n(dv.travelRate);g.clinic=n(mo.clinic);
+    g.basicSet=n(dv.basic);g.basic=Math.min(g.basicSet,g.comm20);g.commission=g.comm20-g.basic;g.phoneA=n(dv.phone);g.travel=n(mo.travelDays)*n(dv.travelRate);g.clinic=n(mo.clinic);
     g.deduction=n(mo.loanPay)+n(mo.deduct);g.net=g.basic+g.commission+g.phoneA+g.travel+g.clinic-g.deduction;
     const months=prData().months||{},yr=m.slice(0,4);
     g.med=Object.keys(months).filter(x=>x.slice(0,4)===yr&&x<=m).sort().map(x=>[x,n((months[x][g.key]||{}).clinic)]).filter(x=>x[1]>0);
@@ -1038,7 +1038,7 @@ function payDetail(g,pct,multi,ed){const k=g.key,dv=g.dv,mo=g.mo;
   return (g.rows.length?payRows(g.rows,multi):`<p style="color:var(--muted)">Tiada invois dalam tempoh ini.</p>`)+
   `<div class="payfoot"><span>Jumlah ${RM(g.total)} · Komisen ${pct}% = <b>${RM(g.comm20)}</b></span></div>
   <div class="paygrid"><div class="sheet sal"><h2 class="sec">Gaji</h2>
-   ${line("Gaji Pokok",payIn("drv",k,"basic",n(dv.basic),ed),RM(g.basic))}
+   ${line("Gaji Pokok",payIn("drv",k,"basic",n(dv.basic),ed),RM(g.basic),g.basic<g.basicSet?`<small style="color:var(--muted)">Komisen ${RM(g.comm20)} kurang daripada gaji pokok, jadi gaji pokok = komisen</small>`:"")}
    ${line("Komisen",`<small>${RM(g.comm20)} − gaji pokok</small>`,RM(g.commission))}
    ${line("Elaun Telefon",payIn("drv",k,"phone",n(dv.phone),ed),RM(g.phoneA))}
    ${line("Elaun Perjalanan",ed?`${payIn("mon",k,"travelDays",n(mo.travelDays),ed,{ph:"hari",w:"70px"})} hari × ${payIn("drv",k,"travelRate",n(dv.travelRate),ed,{w:"80px"})}`:`${n(mo.travelDays)} hari × ${RM(dv.travelRate)}`,RM(g.travel))}
