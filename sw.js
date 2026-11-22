@@ -1,4 +1,4 @@
-// AQS Hire service worker: notifikasi job sahaja (tiada cache, supaya kemas kini sentiasa terus sampai)
+// AQS Hire service worker v2: notifikasi job + nombor pada ikon (tiada cache, supaya kemas kini sentiasa terus sampai)
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", e => e.waitUntil(self.clients.claim()));
 self.addEventListener("fetch", () => {});

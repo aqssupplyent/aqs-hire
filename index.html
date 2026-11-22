@@ -1550,7 +1550,7 @@ VIEWS.tugasan=()=>{
 const pushOK=()=>"serviceWorker" in navigator&&"PushManager" in window&&"Notification" in window;
 const isIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
 const isStandalone=()=>(window.matchMedia&&matchMedia("(display-mode: standalone)").matches)||navigator.standalone===true;
-if("serviceWorker" in navigator&&location.protocol!=="file:"){addEventListener("load",()=>{navigator.serviceWorker.register("sw.js").catch(()=>{})})}
+if("serviceWorker" in navigator&&location.protocol!=="file:"){addEventListener("load",()=>{navigator.serviceWorker.register("sw.js?v=2",{updateViaCache:"none"}).then(r=>{try{r.update()}catch(e){}}).catch(()=>{})})}
 const b64u=s=>{const p="=".repeat((4-s.length%4)%4),b=atob((s+p).replace(/-/g,"+").replace(/_/g,"/"));return Uint8Array.from(b,c=>c.charCodeAt(0))};
 S.push={state:"",checked:false};
 async function pushCheck(){if(S.push.checked)return;S.push.checked=true;
