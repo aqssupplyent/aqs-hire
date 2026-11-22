@@ -15,8 +15,10 @@ const dmy = (iso?: string) => (iso ? iso.slice(8, 10) + "/" + iso.slice(5, 7) + 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   const URL_ = Deno.env.get("SUPABASE_URL")!;
-  const SRK = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const ANON = Deno.env.get("SUPABASE_ANON_KEY")!;
+  const pick = (name: string) => { try { const o = JSON.parse(Deno.env.get(name) || "{}"); return o.default || Object.values(o)[0] || ""; } catch (_) { return ""; } };
+  const SRK = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || pick("SUPABASE_SECRET_KEYS");
+  const ANON = Deno.env.get("SUPABASE_ANON_KEY") || pick("SUPABASE_PUBLISHABLE_KEYS");
+  if (!SRK || !ANON) return json({ error: "missing_keys" }, 500);
   const admin = createClient(URL_, SRK, { auth: { persistSession: false } });
   // deno-lint-ignore no-explicit-any
   let body: any = {};
