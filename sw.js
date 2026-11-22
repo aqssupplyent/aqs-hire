@@ -10,7 +10,8 @@ self.addEventListener("push", e => {
   e.waitUntil(Promise.all([bumpBadge(d.badge), self.registration.showNotification(title, {
     body: d.body || "",
     icon: "assets/icon-192.png",
-    badge: "assets/icon-192.png",
+    badge: "assets/badge-96.png",
+    vibrate: [200, 100, 200],
     tag: d.tag || "aqs-job",
     renotify: true,
     data: { url: d.url || "./#tugasan" }
