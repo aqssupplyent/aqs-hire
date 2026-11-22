@@ -1532,6 +1532,7 @@ VIEWS.tugasan=()=>{
       :emptyBox("Belum Ada Nama Pemandu","Akaun ini tidak dipautkan kepada mana-mana pemandu. Minta admin isi Akaun log masuk untuk pemandu anda di Tetapan → Pemandu, atau tambah pemandu yang guna akaun bersama.")};
   }
   const mine=S.jobs.filter(j=>!S.isDriver||(j.driverId?j.driverId===curDriverId():String(j.driverEmail||"").toLowerCase()===me));
+  if(S.isDriver&&isLoaded())syncBadge(mine.filter(j=>j.status==="confirmed").length);
   const act=mine.filter(j=>j.status==="confirmed"||j.status==="ongoing").sort((a,b)=>(a.startDate||"").localeCompare(b.startDate||""));
   const done=mine.filter(j=>j.do&&j.do.status==="signed").sort((a,b)=>(b.do.submittedAt||"").localeCompare(a.do.submittedAt||"")).slice(0,10);
   const card=j=>`<article class="tcard"><div class="th"><span class="mono">${esc(j.no)}</span>${pill(JOB_ST[j.status]||JOB_ST.draft)}</div>${j.source==="driver"?`<small class="srcdrv">Job sendiri</small>`:""}
@@ -1565,6 +1566,8 @@ ACT.pushon=async(d,btn)=>{if(btn){btn.disabled=true;btn.textContent="…"}
     S.push.state="on";toast("Notifikasi dihidupkan");render();
     try{reg.showNotification("Notifikasi aktif",{body:"Anda akan dimaklumkan bila admin tetapkan job baharu.",icon:"assets/icon-192.png"})}catch(e){}
   }catch(e){toast("Notifikasi belum dapat dihidupkan. Minta admin semak tetapan notifikasi (SQL 012 dan fungsi notify).");if(btn){btn.disabled=false;btn.textContent="Hidupkan Notifikasi"}}};
+function syncBadge(n){try{if(navigator.setAppBadge){n>0?navigator.setAppBadge(n):navigator.clearAppBadge&&navigator.clearAppBadge()}
+  if(window.caches)caches.open("aqs-badge").then(c=>c.put("count",new Response(String(n||0)))).catch(()=>{})}catch(e){}}
 function pushBanner(){if(!S.isDriver)return"";pushCheck();const st=S.push.state;
   if(st==="on")return`<div class="pushbar ok">🔔 Notifikasi job aktif di telefon ini.</div>`;
   if(st==="off")return`<div class="pushbar"><div><b>Dapatkan notifikasi job baharu</b><br><small>Telefon akan berbunyi bila admin tetapkan job kepada anda.</small></div><button class="btn pri" data-act="pushon">Hidupkan Notifikasi</button></div>`;

@@ -7,15 +7,29 @@ self.addEventListener("push", e => {
   let d = {};
   try { d = e.data ? e.data.json() : {}; } catch (_) { d = { body: e.data ? e.data.text() : "" }; }
   const title = d.title || "Job baharu";
-  e.waitUntil(self.registration.showNotification(title, {
+  e.waitUntil(Promise.all([bumpBadge(d.badge), self.registration.showNotification(title, {
     body: d.body || "",
     icon: "assets/icon-192.png",
     badge: "assets/icon-192.png",
     tag: d.tag || "aqs-job",
     renotify: true,
     data: { url: d.url || "./#tugasan" }
-  }));
+  })]));
 });
+
+// Nombor merah pada ikon apps (seperti WhatsApp)
+async function bumpBadge(n) {
+  try {
+    if (!self.navigator || !self.navigator.setAppBadge) return;
+    const c = await caches.open("aqs-badge");
+    let cur = 0;
+    const r = await c.match("count");
+    if (r) cur = parseInt(await r.text(), 10) || 0;
+    const next = typeof n === "number" ? n : cur + 1;
+    await c.put("count", new Response(String(next)));
+    await self.navigator.setAppBadge(next);
+  } catch (_) {}
+}
 
 self.addEventListener("notificationclick", e => {
   e.notification.close();
