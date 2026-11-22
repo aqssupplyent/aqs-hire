@@ -1553,10 +1553,10 @@ const isStandalone=()=>(window.matchMedia&&matchMedia("(display-mode: standalone
 if("serviceWorker" in navigator&&location.protocol!=="file:"){addEventListener("load",()=>{navigator.serviceWorker.register("sw.js?v=2",{updateViaCache:"none"}).then(r=>{try{r.update()}catch(e){}}).catch(()=>{})})}
 const b64u=s=>{const p="=".repeat((4-s.length%4)%4),b=atob((s+p).replace(/-/g,"+").replace(/_/g,"/"));return Uint8Array.from(b,c=>c.charCodeAt(0))};
 S.push={state:"",checked:false};
-async function pushCheck(){if(S.push.checked)return;S.push.checked=true;
+async function pushCheck(){if(S.push.checked)return;S.push.checked=true;await pushOwnerCheck();S.push.checked=true;
   if(!pushOK()){S.push.state=isIOS()&&!isStandalone()?"ios-install":"unsupported";render();return}
   if(Notification.permission==="denied"){S.push.state="denied";render();return}
-  try{const reg=await navigator.serviceWorker.ready;const sub=await reg.pushManager.getSubscription();S.push.state=sub&&Notification.permission==="granted"?"on":"off";if(sub&&S.sb&&S.org)S.sb.from("push_subs").upsert({endpoint:sub.endpoint,email:String(S.userName).toLowerCase(),org:S.org,sub:sub.toJSON()}).then(()=>{},()=>{})}catch(e){S.push.state="off"}render()}
+  try{const reg=await navigator.serviceWorker.ready;const sub=await reg.pushManager.getSubscription();S.push.state=sub&&Notification.permission==="granted"?"on":"off"}catch(e){S.push.state="off"}render()}
 ACT.pushon=async(d,btn)=>{if(btn){btn.disabled=true;btn.textContent="…"}
   try{const perm=await Notification.requestPermission();if(perm!=="granted"){S.push.state=perm==="denied"?"denied":"off";render();return}
     const r=await S.sb.functions.invoke("notify",{body:{action:"key"}});if(r.error||!r.data||!r.data.publicKey)throw new Error("key");
@@ -1574,6 +1574,9 @@ function pushBanner(){if(!S.isDriver)return"";pushCheck();const st=S.push.state;
   if(st==="ios-install")return`<div class="pushbar"><div><b>Untuk notifikasi di iPhone</b><br><small>Tekan butang <b>Kongsi</b> (petak dengan anak panah) di Safari, pilih <b>Add to Home Screen</b>, kemudian buka sistem dari ikon AQS Hire di skrin utama.</small></div></div>`;
   if(st==="denied")return`<div class="pushbar"><div><b>Notifikasi disekat</b><br><small>Benarkan notifikasi untuk laman ini dalam tetapan telefon, kemudian buka semula.</small></div></div>`;
   return"";}
+async function pushOwnerCheck(){try{if(!("serviceWorker" in navigator)||!S.sb)return;const reg=await navigator.serviceWorker.getRegistration();const sub=reg&&reg.pushManager&&await reg.pushManager.getSubscription();if(!sub)return;
+  const{data,error}=await S.sb.from("push_subs").select("email").eq("endpoint",sub.endpoint);if(error)return;
+  if(!data||!data.length||String(data[0].email).toLowerCase()!==String(S.userName).toLowerCase()){await sub.unsubscribe();S.push.state="off";S.push.checked=false;if(navigator.clearAppBadge)navigator.clearAppBadge();if(S.isDriver)render()}}catch(e){}}
 async function notifyJob(id){if(!S.sb||!S.org||!S.sb.functions)return;try{const r=await S.sb.functions.invoke("notify",{body:{action:"notify",org:S.org,jobId:id,site:location.origin+location.pathname}});
   if(r&&r.data&&r.data.sent>0)toast("Notifikasi dihantar kepada pemandu");}catch(e){}}
 const DRV_PREFIX="JD";
@@ -2211,6 +2214,7 @@ async function start(session){
         S.org=pick.id;S.orgName=pick.name;writeOrg(pick.id)}}}catch(e){}
   if(!multi){try{const{data,error}=await sb.rpc("is_staff");if(!error&&data===false)S.canWrite=false}catch(e){}}
   try{await loadStaff()}catch(e){}
+  if(!S.isDriver)pushOwnerCheck();
   loadOrgLogo();
   if(S.orgName)applyBrand();
   if(S.orgs&&S.orgs.length>1)$("#who").insertAdjacentHTML("afterbegin",`<button data-act="switchorg" title="Tukar Syarikat" aria-label="Tukar Syarikat"><span aria-hidden="true">⇄</span><span class="lbl"> Tukar Syarikat</span></button>`);
