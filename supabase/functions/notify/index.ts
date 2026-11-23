@@ -65,6 +65,31 @@ Deno.serve(async (req) => {
     const u = await user.auth.getUser(); actor = String((u.data && u.data.user && u.data.user.email) || "").toLowerCase();
   }
 
+  // Tuntutan kos (resit) dari pemandu → admin / staf dengan akses Kos Lori
+  if (body.action === "event" && body.kind === "claim") {
+    const { data: cr } = await admin.from("costs").select("data").eq("org", org).eq("id", jobId).maybeSingle();
+    if (!cr) return json({ error: "not_found" }, 404);
+    const c = cr.data || {};
+    const CAT: Record<string, string> = { toll: "Tol", fuel: "Minyak", repair: "Pembaikan & Servis", tyre: "Tayar", parking: "Parking / Saman", other: "Lain-lain" };
+    const { data: m } = await admin.from("members").select("email,role,perms").eq("org", org);
+    // deno-lint-ignore no-explicit-any
+    const to = (m || []).filter((x: any) => x.role === "admin" || (x.role === "staff" && Array.isArray(x.perms) && x.perms.includes("kos")))
+      // deno-lint-ignore no-explicit-any
+      .map((x: any) => String(x.email).toLowerCase()).filter((e: string) => e !== actor);
+    if (!to.length) return json({ sent: 0, reason: "no_account" });
+    const { data: subs } = await admin.from("push_subs").select("endpoint,sub").in("email", to);
+    if (!subs || !subs.length) return json({ sent: 0, reason: "no_subscription" });
+    webpush.setVapidDetails(site || "mailto:noreply@example.com", k.public_key, k.private_key);
+    const payload = JSON.stringify({ title: "Tuntutan kos: " + (CAT[c.cat] || "Kos") + " " + rm(c.amount), body: [c.byName, c.plate, c.desc].filter(Boolean).join(" · "), tag: "claim-" + jobId, url: (site || ".") + (site ? "" : "/") + "#kos" });
+    let sent = 0;
+    for (const s of subs) {
+      try { await webpush.sendNotification(s.sub, payload, { TTL: 86400 }); sent++; }
+      // deno-lint-ignore no-explicit-any
+      catch (e: any) { if (e && (e.statusCode === 404 || e.statusCode === 410)) await admin.from("push_subs").delete().eq("endpoint", s.endpoint); }
+    }
+    return json({ sent, total: subs.length });
+  }
+
   const { data: job } = await admin.from("jobs").select("data").eq("org", org).eq("id", jobId).maybeSingle();
   if (!job) return json({ error: "not_found" }, 404);
   const j = job.data || {};
