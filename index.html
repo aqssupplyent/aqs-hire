@@ -11,6 +11,13 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="AQS Hire">
 <meta name="theme-color" content="#18323c">
+<meta property="og:site_name" content="AQS Supply Enterprise">
+<meta property="og:title" content="AQS Supply Enterprise">
+<meta property="og:description" content="Delivery Order AQS Supply Enterprise">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://aqssupplyent.github.io/aqs-hire/assets/og-aqs.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
@@ -1691,6 +1698,8 @@ ACT.vendorlink=async d=>{
     closeModal();setTimeout(()=>createVendorLink(picked),50);return false;
   });
 };
+const ORG_PAGES={ak12:"ak12.html"};
+const shareBase=()=>location.origin+location.pathname.replace(/[^/]*$/,"")+(ORG_PAGES[S.org]||"");
 async function createVendorLink(jobs){
   const j=jobs[0];const token=randToken();
   const exp=new Date(Date.now()+7*864e5).toISOString();
@@ -1699,7 +1708,7 @@ async function createVendorLink(jobs){
   const{error}=await S.sb.from("do_links").insert(row);
   if(error){toast(jobs.length>1?"Pautan tidak dapat dicipta. Pastikan SQL 006 sudah dijalankan.":"Pautan tidak dapat dicipta. Pastikan SQL 004 sudah dijalankan.");return}
   for(const x of jobs){try{await S.db.collection("jobs").doc(x.id).update({log:(x.log||[]).concat(logEntry("Pautan DO vendor dihantar kepada "+x.vendorDriver+(x.vendorName?" ("+x.vendorName+")":"")))})}catch(e){}}
-  const link=location.origin+location.pathname+"?do="+token;
+  const link=shareBase()+"?do="+token;
   const phone=String(j.vendorPhone||"").replace(/\D/g,"").replace(/^0/,"60");
   const lines=jobs.map((x,i)=>`${jobs.length>1?(i+1)+") ":""}${x.no||"Job"} · ${dmy(x.startDate)}${x.time?" "+x.time:""}\n   Lori: ${x.vendorPlate||"-"} · Pemandu: ${x.vendorDriver||"-"}\n   Pickup: ${x.pickup||"-"}\n   Dropoff: ${x.dropoff||"-"}`).join("\n\n");
   const msg=`Salam${jobs.length>1&&j.vendorName?" "+j.vendorName:" "+j.vendorDriver}.\n\n${lines}\n\nBila kerja siap, buka pautan ini${jobs.length>1?", pilih job ikut NO. LORI dan NAMA anda,":""} isi DO dan dapatkan tandatangan PIC tapak:\n${link}\n\n— ${orgLabel()}`;
@@ -1753,7 +1762,7 @@ ACT.picsave=async(d,btn)=>{if(!DOF||!DOF.pic)return;const D=DOF.D;
   const{error}=await S.sb.from("pic_links").insert({token,org:S.org||"aqs",job_id:DOF.id,created_by:S.userName||null,expires_at:exp});
   if(error){if(btn){btn.disabled=false;btn.textContent="Simpan & Cipta Pautan PIC"}toast("Pautan tidak dapat dicipta. Pastikan SQL 011 sudah dijalankan.");return}
   DOF=null;closeModal();render();
-  const link=location.origin+location.pathname+"?pic="+token;
+  const link=shareBase()+"?pic="+token;
   const phone=String(j.supervisor||"").replace(/\D/g,"").replace(/^0/,"60");
   const msg=`Salam${j.supervisor?" "+String(j.supervisor).replace(/[\d\-+()]/g,"").trim():""}.\n\nMohon semak dan tandatangan Delivery Order untuk kerja ${j.no||""} (${dmy(draft.date)}):\n${draft.items.map(x=>"- "+x.desc+(x.qty?" ("+x.qty+")":"")).join("\n")}\n\nPautan:\n${link}\n\n— ${orgLabel()}`;
   modal("Pautan Tandatangan PIC",`<p style="margin:0 0 8px">Hantar pautan ini kepada PIC tapak. PIC boleh semak DO, isi nama dan tandatangan. Pautan boleh digunakan sekali dan tamat dalam 7 hari.</p>
