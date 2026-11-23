@@ -1168,44 +1168,62 @@ ACT.paycsv=async()=>{
   R.list.forEach(g=>out.push([g.name,g.type==="staff"?"Staf"+(g.position?" - "+g.position:""):g.plates.join(" / "),g.rows.length,f(g.total),f(g.comm20),f(g.basic),f(g.commission),f(g.phoneA),f(g.travel),f(g.clinic),f(g.mo.loanPay),f(g.mo.deduct),f(g.net),f(g.medBal),f(g.loanBal)].map(q).join(",")));
   try{await dl.save({filename:"gaji-"+S.pay.month+".csv",data:"﻿"+out.join("\n")})}catch(e){if(e&&e.code!=="declined")toast("Muat turun gagal.")}
 };
-const PAY_CSS=`.page.payslip{width:210mm;min-height:297mm;margin:10mm auto;background:#fff;padding:16mm 14mm;color:#111;font:11.5px/1.35 Calibri,Carlito,"Segoe UI",Arial,sans-serif}
-.payslip h1{font-size:15px;font-weight:400;text-align:center;text-decoration:underline;margin:0 0 10px}
-.payslip table{border-collapse:collapse}.payslip .inv{width:100%;border:1px solid #5b9bd5}
-.payslip .inv th{background:#5b9bd5;color:#fff;font-weight:700;padding:5px 6px;text-align:center}
-.payslip .inv td{border-top:1px solid #5b9bd5;padding:3px 6px;text-align:center;white-space:nowrap}.payslip .inv td.site{white-space:normal}
-.payslip .inv td.rm{text-align:left;padding-right:0}.payslip .inv td.amt{text-align:right}
-.payslip .inv tr.sum td{font-weight:700;padding:7px 6px}
-.payslip .box{margin:16px 0 0 18%;width:52%}.payslip .box caption{text-align:left;text-decoration:underline;padding-bottom:2px}
-.payslip .box td{border:1px solid #333;padding:1px 6px}.payslip .box td:first-child{text-align:center;width:48%}.payslip .box td.rm{width:8%}.payslip .box td.amt{text-align:right}
-.payslip .box td.nt{border:0;white-space:nowrap;font-size:10.5px;padding-left:4px}
-.payslip .box tr.tot td{font-weight:700;border-top:2px solid #111;border-bottom:2px solid #111}.payslip .box tr.tot td.nt{border:0}
+const PAY_CSS=`.page.payslip{width:210mm;min-height:297mm;margin:10mm auto;background:#fff;padding:13mm 15mm 12mm;color:#1b1f23;font:11px/1.4 "IBM Plex Sans","Segoe UI",Arial,sans-serif;position:relative}
+.payslip .hd{display:grid;grid-template-columns:30mm minmax(0,1fr);gap:6mm;align-items:center;padding-bottom:4mm;border-bottom:2.5px solid #18323c}
+.payslip .hd img{width:30mm;max-height:24mm;object-fit:contain}
+.payslip .co b{display:block;font-size:15px;letter-spacing:.02em;text-transform:uppercase}.payslip .co span{display:block;color:#444;font-size:10.5px;text-transform:uppercase}.payslip .co .ct{text-transform:none}
+.payslip .ttl{display:flex;justify-content:space-between;align-items:flex-end;margin:5mm 0 4mm}
+.payslip .ttl h1{margin:0;font-size:18px;letter-spacing:.12em;color:#18323c}.payslip .ttl h1 small{display:block;font-size:10px;letter-spacing:.2em;color:#6b7780;font-weight:500}
+.payslip .ttl .per{text-align:right;font-size:11px;color:#444}.payslip .ttl .per b{display:block;font-size:14px;color:#1b1f23}
+.payslip .emp{display:grid;grid-template-columns:1fr 1fr;border:1px solid #c9d1d6;border-radius:2mm;margin-bottom:5mm}
+.payslip .emp div{display:grid;grid-template-columns:28mm minmax(0,1fr);padding:2mm 3.5mm;border-bottom:1px solid #e3e8eb}.payslip .emp div:nth-last-child(-n+2){border-bottom:0}
+.payslip .emp div:nth-child(odd){border-right:1px solid #e3e8eb}.payslip .emp span{color:#6b7780;font-size:10px;text-transform:uppercase;letter-spacing:.04em;padding-top:.5mm}.payslip .emp b{font-weight:600}
+.payslip .two{display:grid;grid-template-columns:1fr 1fr;gap:5mm;align-items:start}
+.payslip table{width:100%;border-collapse:collapse}
+.payslip .pt th{background:#18323c;color:#fff;text-align:left;padding:2mm 3mm;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase}.payslip .pt th.r{text-align:right}
+.payslip .pt td{padding:2mm 3mm;border-bottom:1px solid #e3e8eb;vertical-align:top}.payslip .pt td small{display:block;color:#6b7780;font-size:9.5px}
+.payslip .r{text-align:right;white-space:nowrap}
+.payslip .pt tr.sum td{font-weight:700;border-top:1.5px solid #18323c;border-bottom:0;background:#f3f6f8}
+.payslip .net{margin:5mm 0;display:flex;justify-content:space-between;align-items:center;background:#18323c;color:#fff;border-radius:2mm;padding:3.5mm 5mm}
+.payslip .net span{font-size:11px;letter-spacing:.1em;text-transform:uppercase}.payslip .net b{font-size:20px;letter-spacing:.02em}
+.payslip h3{margin:5mm 0 2mm;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#18323c}
+.payslip .lt th{background:#eef2f4;color:#333;text-align:left;padding:1.5mm 2mm;font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid #c9d1d6}
+.payslip .lt td{padding:1.4mm 2mm;border-bottom:1px solid #edf0f2;font-size:10px}.payslip .lt tr.sum td{font-weight:700;border-top:1px solid #18323c;background:#f7f9fa}
+.payslip .bal{display:grid;grid-template-columns:1fr 1fr;gap:5mm;margin-top:2mm}.payslip .bal .box{border:1px solid #c9d1d6;border-radius:2mm;padding:2.5mm 3.5mm}
+.payslip .bal .box b{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#18323c;margin-bottom:1mm}.payslip .bal .row{display:flex;justify-content:space-between;font-size:10.5px;padding:.6mm 0}
+.payslip .bal .row.t{border-top:1px solid #c9d1d6;margin-top:1mm;padding-top:1.2mm;font-weight:700}
+.payslip .sig{display:grid;grid-template-columns:1fr 1fr;gap:16mm;margin-top:16mm}.payslip .sig div{border-top:1px solid #333;padding-top:1.5mm;font-size:10px;color:#444}.payslip .sig div b{display:block;color:#1b1f23;font-size:10.5px}
+.payslip .foot{margin-top:6mm;text-align:center;font-size:9px;color:#8a959c}
 @media print{.page.payslip{margin:0!important}}`;
 ACT.payslip=d=>{
-  const R=payNow(),g=R.list.find(x=>x.key===d.k);if(!g)return;const pct=payPct();const m=S.pay.month;const f=x=>rmFmt.format(n(x));
-  const name=String(g.name||"").split(/\s+/)[0];const nm=name.charAt(0).toUpperCase()+name.slice(1).toLowerCase();
-  const row=(lab,amt,note,neg)=>`<tr><td>${lab}</td><td class="rm">${neg&&n(amt)?"-RM":"RM"}</td><td class="amt">${n(amt)?f(amt):"-"}</td>${note!==undefined?`<td class="nt">${esc(note||"")}</td>`:""}</tr>`;
-  const dvT=n(g.dv.travelRate),days=n(g.mo.travelDays);
-  const dedNote=[n(g.mo.loanPay)?"Pinjaman staf RM"+f(g.mo.loanPay):"",g.mo.deductNote].filter(Boolean).join("; ");
-  const isS=g.type==="staff";
-  const page=`<div class="page payslip"><h1>${esc(nm)}'s ${isS?"Salary":"Calculation Salary"} - ${MON3[+m.slice(5,7)-1]} ${m.slice(2,4)}</h1>
-  ${isS?`<p style="text-align:center;margin:0 0 6px">${esc(g.name)}${g.position?" · "+esc(g.position):""}${g.ic?" · IC "+esc(g.ic):""}</p>`:`<table class="inv"><thead><tr><th>No</th><th>Date</th><th>INV No</th><th>DO No</th><th>Site</th><th colspan="2">Amount Inv</th><th>Sub To</th></tr></thead><tbody>
-  ${g.rows.map((r,i)=>`<tr><td>${i+1}</td><td>${dMon(r.date)}</td><td>${esc(r.no)}</td><td>${esc(r.doNo)}</td><td class="site">${esc(r.site)}</td><td class="rm">RM</td><td class="amt">${f(r.amount)}</td><td>${esc(r.plate)}</td></tr>`).join("")}
-  <tr class="sum"><td colspan="5" style="text-align:right">TOTAL</td><td class="rm">RM</td><td class="amt">${f(g.total)}</td><td></td></tr>
-  <tr class="sum"><td colspan="5" style="text-align:right">COMMISION ${pct}%</td><td class="rm">RM</td><td class="amt">${f(g.comm20)}</td><td></td></tr></tbody></table>`}
-  <table class="box"><caption>SALARY</caption>
-  ${row("GAJI POKOK",g.basic,"")}${isS?"":row("COMMISION",g.commission,"")}${isS&&!g.phoneA?"":row("PHONE ALLOWANCE",g.phoneA,"")}
-  ${g.travel?row("TRAVEL ALLOWANCE",g.travel,"("+days+" day x RM"+dvT+" (per day))"):""}
-  ${row("BILL CLINIC",g.clinic,g.mo.clinicNote)}${row("DEDUCTION",g.deduction,dedNote,1)}
-  <tr class="tot"><td>TOTAL SALARY</td><td class="rm">RM</td><td class="amt">${f(g.net)}</td><td class="nt"></td></tr></table>
-  <table class="box"><caption>MEDICAL CLAIM (RM${f(g.dv.medLimit).replace(/\.00$/,"")})</caption>
-  ${n(g.dv.medBefore)?row("SEBELUM",g.dv.medBefore):""}${g.med.map(([x,v])=>row(monUp(x),v)).join("")}
-  <tr class="tot"><td>TOTAL</td><td class="rm">RM</td><td class="amt">${f(g.medUsed)}</td></tr>
-  <tr class="tot"><td>BALANCE (RM ${f(g.dv.medLimit).replace(/\.00$/,"")})</td><td class="rm">RM</td><td class="amt">${f(g.medBal)}</td></tr></table>
-  ${n(g.dv.loanTotal)?`<table class="box"><caption>STAFF LOAN (RM${f(g.dv.loanTotal)})</caption>
-  <tr class="tot"><td>TOTAL</td><td class="rm">RM</td><td class="amt">${f(g.dv.loanTotal)}</td></tr>
-  ${n(g.dv.loanBefore)?row("SEBELUM",g.dv.loanBefore):""}${g.loan.map(([x,v])=>row(monUp(x).slice(0,3)==="SEP"?"SEPT":monUp(x).slice(0,3),v)).join("")}
-  <tr class="tot"><td>BALANCE</td><td class="rm">RM</td><td class="amt">${f(g.loanBal)}</td></tr></table>`:""}</div>`;
-  printHTML(docShell("Salary "+g.name+" "+m,PAY_CSS,page));
+  const R=payNow(),g=R.list.find(x=>x.key===d.k);if(!g)return;const pct=payPct();const m=S.pay.month;const f=x=>rmFmt.format(n(x));const C=S.company;const isS=g.type==="staff";
+  const br=t=>esc(t||"").replace(/\n/g,"<br>");const logo=C.logo||defLogo();const per=R.per||payPeriod(m);
+  const earn=[["Gaji Pokok",g.basic,""]];
+  if(!isS)earn.push(["Komisen",g.commission,`${pct}% × RM ${f(g.total)} = RM ${f(g.comm20)}, tolak gaji pokok`]);
+  if(g.phoneA)earn.push(["Elaun Telefon",g.phoneA,""]);
+  if(g.travel)earn.push(["Elaun Perjalanan",g.travel,`${n(g.mo.travelDays)} hari × RM ${f(g.dv.travelRate)}`]);
+  if(g.clinic)earn.push(["Tuntutan Bil Klinik",g.clinic,g.mo.clinicNote||""]);
+  const ded=[];if(n(g.mo.loanPay))ded.push(["Bayaran Pinjaman Staf",g.mo.loanPay,""]);if(n(g.mo.deduct))ded.push(["Potongan Lain",g.mo.deduct,g.mo.deductNote||""]);
+  const gross=earn.reduce((a,x)=>a+n(x[1]),0),dtot=ded.reduce((a,x)=>a+n(x[1]),0);
+  const rows=(L,empty)=>(L.length?L:[[empty,0,""]]).map(([l,v,nt])=>`<tr><td>${esc(l)}${nt?`<small>${esc(nt)}</small>`:""}</td><td class="r">${L.length?f(v):"—"}</td></tr>`).join("");
+  const plates=g.plates.join(", ");
+  const page=`<div class="page payslip">
+  <div class="hd">${logo?`<img src="${esc(logo)}" alt="">`:"<span></span>"}<div class="co"><b>${esc(C.name||S.orgName||"")}${C.regNo?" ("+esc(C.regNo)+")":""}</b><span>${br(C.address)}</span><span class="ct">${[C.phone?"Tel: "+esc(C.phone):"",C.email?"E-mel: "+esc(C.email):""].filter(Boolean).join(" &nbsp;|&nbsp; ")}</span></div></div>
+  <div class="ttl"><h1>SLIP GAJI<small>PAYSLIP</small></h1><div class="per">Bulan Gaji<b>${esc(monthName(m).toUpperCase())}</b></div></div>
+  <div class="emp"><div><span>Nama</span><b>${esc(g.name)}</b></div><div><span>No. K/P</span><b>${esc(g.ic||"—")}</b></div>
+   <div><span>Jawatan</span><b>${esc(isS?(g.position||"Staf"):"Pemandu")}</b></div><div><span>${isS?"Telefon":"No. Lori"}</span><b>${esc(isS?(g.phone||"—"):(plates||"—"))}</b></div>
+   ${isS?"":`<div><span>Tempoh Invois</span><b>${dmy(per.from)} – ${dmy(per.to)}</b></div><div><span>Bil. Invois</span><b>${g.rows.length}</b></div>`}</div>
+  <div class="two"><table class="pt"><thead><tr><th>Pendapatan</th><th class="r">RM</th></tr></thead><tbody>${rows(earn,"—")}<tr class="sum"><td>Jumlah Pendapatan</td><td class="r">${f(gross)}</td></tr></tbody></table>
+   <table class="pt"><thead><tr><th>Potongan</th><th class="r">RM</th></tr></thead><tbody>${rows(ded,"Tiada potongan")}<tr class="sum"><td>Jumlah Potongan</td><td class="r">${f(dtot)}</td></tr></tbody></table></div>
+  <div class="net"><span>Gaji Bersih Dibayar</span><b>RM ${f(g.net)}</b></div>
+  ${!isS&&g.rows.length?`<h3>Butiran Komisen (${pct}%)</h3><table class="lt"><thead><tr><th>Bil</th><th>Tarikh</th><th>No. Invois</th><th>No. DO</th><th>Tapak</th><th>Lori</th><th class="r">Jumlah (RM)</th></tr></thead><tbody>
+   ${g.rows.map((r,i)=>`<tr><td>${i+1}</td><td>${dmy(r.date)}</td><td>${esc(r.no)}</td><td>${esc(r.doNo||"—")}</td><td>${esc(r.site)}</td><td>${esc(r.plate||"")}</td><td class="r">${f(r.amount)}</td></tr>`).join("")}
+   <tr class="sum"><td colspan="6" class="r">Jumlah Invois</td><td class="r">${f(g.total)}</td></tr><tr class="sum"><td colspan="6" class="r">Komisen ${pct}%</td><td class="r">${f(g.comm20)}</td></tr></tbody></table>`:""}
+  <div class="bal"><div class="box"><b>Tuntutan Perubatan ${m.slice(0,4)}</b><div class="row"><span>Had setahun</span><span>RM ${f(g.dv.medLimit)}</span></div><div class="row"><span>Telah dituntut</span><span>RM ${f(g.medUsed)}</span></div><div class="row t"><span>Baki</span><span>RM ${f(g.medBal)}</span></div></div>
+   ${n(g.dv.loanTotal)?`<div class="box"><b>Pinjaman Staf</b><div class="row"><span>Jumlah pinjaman</span><span>RM ${f(g.dv.loanTotal)}</span></div><div class="row"><span>Telah dibayar</span><span>RM ${f(n(g.dv.loanTotal)-g.loanBal)}</span></div><div class="row t"><span>Baki</span><span>RM ${f(g.loanBal)}</span></div></div>`:"<div></div>"}</div>
+  <div class="sig"><div><b>Disediakan oleh</b>${esc(C.name||S.orgName||"")}</div><div><b>Diterima oleh</b>${esc(g.name)}</div></div>
+  <div class="foot">Slip gaji ini dijana oleh komputer · ${esc(C.name||S.orgName||"")} · ${esc(monthName(m))}</div></div>`;
+  printHTML(docShell("Slip Gaji "+g.name+" "+m,PAY_CSS,page));
 };
 
 
