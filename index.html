@@ -615,7 +615,8 @@ VIEWS.utama=()=>{
   const open=posted.filter(x=>x.c.due>0.005);
   const over=open.filter(x=>x.c.pay==="overdue");
   let collected=0;S.invoices.forEach(i=>(i.payments||[]).forEach(p=>{if((p.date||"").slice(0,7)===ym)collected+=n(p.amount)}));
-  const toInvoice=S.jobs.filter(j=>(j.status==="done")&&!S.invoices.some(i=>i.jobId===j.id&&i.status!=="cancelled"));
+  const doN=j=>j.do&&j.do.no?+String(j.do.no).replace(/\D/g,"")||Infinity:Infinity;
+  const toInvoice=S.jobs.filter(j=>(j.status==="done")&&!S.invoices.some(i=>i.jobId===j.id&&i.status!=="cancelled")).sort((a,b)=>doN(a)-doN(b)||(a.no||"").localeCompare(b.no||""));
   const cp=crumb([["Papan Pemuka"]])+`<div class="right"><button class="btn" data-act="jrpaste">Tampal Job Request</button><button class="btn pri" data-act="new" data-k="job">+ Rekod Kerja Baharu</button></div>`;
   let main=drvReqBanner();
   if(isLoaded()&&!S.jobs.length&&!S.invoices.length&&!S.customers.length){
