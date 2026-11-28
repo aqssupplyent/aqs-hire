@@ -472,6 +472,7 @@ const EN_RX=[[/^(\d+) tamat$/,"$1 expired"],[/^(\d+) hampir tamat$/,"$1 expiring
 [/^(.+) sudah ada dalam sistem\.$/,"$1 is already in the system."],[/^(.+) sudah ada\.$/,"$1 already exists."],[/^Padam (.+)\?$/,"Delete $1?"],[/^Buang Pemandu (.*)\?$/,"Remove driver $1?"],[/^Buang (.+)\?$/,"Remove $1?"],
 [/^(.+) dikemas kini$/,"$1 updated"],[/^(.+) ditambah$/,"$1 added"],
 [/^Rekod kerja dicipta$/,"Work record created"],[/^Butiran dikemas kini$/,"Details updated"],[/^Invois draf dicipta$/,"Draft invoice created"],[/^Rekod kerja contoh dicipta$/,"Sample work record created"],[/^Invois contoh dicipta$/,"Sample invoice created"]];
+EN_RX.push([/^Lihat Invois (.+)$/,"View Invoice $1"]);
 EN_RX.push([/^(.+) sahaja$/,"$1 only"]);
 EN_RX.push([/^(\S+-[B-Z](?:, \S+-[B-Z])*) dicipta$/,"$1 created"],[/^Disalin daripada (\S+) \(kenderaan tambahan\)$/,"Copied from $1 (extra vehicle)"]);
 EN_RX.push([/^(\d+) tuntutan kos dari pemandu menunggu kelulusan$/,"$1 driver cost claim(s) awaiting approval"],[/^(.+)\. Admin akan semak dan luluskan\.$/,"$1. The admin will review and approve."]);
@@ -731,7 +732,9 @@ function jobForm(){
     if(st==="draft")acts+=`<button class="btn pri" data-act="jobst" data-k="confirmed">Sahkan</button>`;
     if(st==="confirmed")acts+=`<button class="btn pri" data-act="jobst" data-k="ongoing">Mula Kerja</button>`;
     if(st==="ongoing")acts+=`<button class="btn pri" data-act="jobst" data-k="done">Tanda Selesai</button>`;
-    if(["confirmed","ongoing","done"].includes(st))acts+=`<button class="btn ${st==="done"?"pri":""}" data-act="mkinv">Cipta Invois</button>`;
+    const actInv=invs.filter(i=>i.status!=="cancelled");
+    if(actInv.length)acts+=actInv.map(i=>`<button class="btn pri" data-act="open" data-v="invois" data-id="${i.id}">Lihat Invois ${esc(i.no||"Draf")}</button>`).join("");
+    else if(["confirmed","ongoing","done"].includes(st))acts+=`<button class="btn ${st==="done"?"pri":""}" data-act="mkinv">Cipta Invois</button>`;
     if(st!=="cancelled"&&st!=="done")acts+=`<button class="btn warn" data-act="jobst" data-k="cancelled">Batal</button>`;
     if((st==="confirmed"||st==="ongoing")&&!(d.do&&d.do.status==="signed"))acts+=`<button class="btn" data-act="dofill" data-id="${F.id}">Isi DO</button>`;
     if(picOpen(d))acts+=`<button class="btn" data-act="picprep" data-id="${F.id}">Pautan PIC</button>`;
