@@ -149,7 +149,8 @@ tfoot td{font-weight:600;background:var(--sunk)}
 .grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
 .grid2 th,.grid2 td{white-space:normal;padding:8px 10px}.grid2 td.num,.grid2 td.r,.grid2 td .pill{white-space:nowrap}
 @media (max-width:1280px){.grid2{grid-template-columns:minmax(0,1fr)}}
-@media (max-width:1100px){.tbl-wrap th,.tbl-wrap td{white-space:normal;padding:8px 9px}.tbl-wrap td.num,.tbl-wrap td.r,.tbl-wrap td .pill,.tbl-wrap td.mono{white-space:nowrap}}
+.tbl-wrap th,.tbl-wrap td{white-space:normal}.tbl-wrap td.num,.tbl-wrap td.r,.tbl-wrap td .pill,.tbl-wrap td.mono,.tbl-wrap th.r{white-space:nowrap}
+@media (max-width:1100px){.tbl-wrap th,.tbl-wrap td{padding:8px 9px}}
 h2.sec{font-family:var(--f-display);font-size:16px;font-weight:600;margin:0 0 8px;text-wrap:balance}
 
 /* sheet */
@@ -312,7 +313,7 @@ select option{background:var(--surface);color:var(--ink)}
   .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
   .fld{grid-template-columns:120px minmax(0,1fr)}
 }
-@media (max-width:1320px){
+@media (max-width:1480px){
   /* app bar becomes a menu */
   .appbar .in{overflow:visible;gap:10px;flex-wrap:wrap}
   .menu-btn{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);color:var(--bar-ink);border-radius:6px;padding:6px 10px;font-weight:500;cursor:pointer}
